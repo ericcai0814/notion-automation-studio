@@ -8,13 +8,6 @@ description: >
   notion-update-data-source、notion-create-comment 等 MCP tool 之前，
   需要確認 Notion-flavored markdown 格式、property 寫法、size limits 的場景。
   補官方 notion-workspace-plugin 的空白——官方負責工具層，這份負責內容層。
-metadata:
-  source_urls:
-    - notion://docs/enhanced-markdown-spec
-    - notion://docs/view-dsl-spec
-    - https://developers.notion.com/reference/request-limits
-    - https://developers.notion.com/guides/data-apis/working-with-page-content
-  fetched_date: 2026-04-13
 ---
 
 # Notion Doc Writing
@@ -216,3 +209,12 @@ Callout 與 table cell 內部一律用 markdown，不用 HTML。
 - `/Notion:database-query` — 查 DB
 
 這些 command 內部叫 MCP tools，本 skill 的規則在它們執行時同樣適用——觸發時會一併載入，遵守上面的 Core Rules 與 Pre-Write Checklist。
+
+## References
+
+本 skill 的格式規則整理自下列來源（fetched 2026-04-13）：
+
+- `notion://docs/enhanced-markdown-spec` — Notion-flavored markdown 一手規格
+- `notion://docs/view-dsl-spec` — View DSL 規格
+- <https://developers.notion.com/reference/request-limits> — Notion API request limits
+- <https://developers.notion.com/guides/data-apis/working-with-page-content> — page content 操作指南
