@@ -4,8 +4,9 @@
 # Windows
 Thumbs.db
 
-# Claude Code per-user settings（個人權限快取，不可共用）
-.claude/settings.local.json
+# Claude Code 本地狀態（settings、個人權限快取、其他 plugin 安裝的 skills）
+# studio plugin 自身的內容在 .claude-plugin/ 與頂層 skills/，與此目錄無關
+.claude/
 
 # Studio 本身不含任何 instance-specific 資料
 # plugin 本地開發測試若需要 notion-mapping.json，放在 .scratch/ 下
@@ -16,4 +17,5 @@ Thumbs.db
 
 # Spectra plugin（local SDD 工具，非本 plugin 內容）
 .spectra/
-openspec/.vector-search.db*
+.spectra.yaml
+openspec/
