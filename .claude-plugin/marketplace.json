@@ -6,7 +6,7 @@
   "plugins": [
     {
       "name": "notion-automation-studio",
-      "source": "."
+      "source": "./"
     }
   ]
 }
