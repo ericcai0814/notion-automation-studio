@@ -111,6 +111,60 @@ description: >
 
 ## Workflow
 
+### Preflight: 確保 workflow state + pre-check
+
+#### P.1 ensure state 檔存在
+
+```bash
+node ${CLAUDE_PLUGIN_ROOT}/scripts/workflow-state.js ensure \
+  .claude/workflow-state.json \
+  ${CLAUDE_PLUGIN_ROOT}/templates/workflow-state.json
+```
+
+行為同 `srs-check` 的 Preflight：檔案不存在則從 template 複製，**不中斷**。
+
+#### P.2 pre-check（依 Mode 分支）
+
+**Mode A（SYNC R00XX）**：
+
+```bash
+node ${CLAUDE_PLUGIN_ROOT}/scripts/workflow-state.js pre-check-sync \
+  .claude/workflow-state.json {batch} R00XX
+```
+
+**Mode B（SYNC ALL）**：
+
+```bash
+node ${CLAUDE_PLUGIN_ROOT}/scripts/workflow-state.js pre-check-sync-all \
+  .claude/workflow-state.json {batch} {batch}-SRS/src
+```
+
+Mode B 不因「只有部分 rid 沒 check」而靜默跳過 — 只要任一個 rid 從未被
+srs-check 過，腳本就會 exit 1 並列出完整 missing 清單。使用者必須逐項
+補齊、強制繼續、或取消。
+
+#### P.3 pre-check 結果處理
+
+- **Exit 0** → 進入對應 Mode 的步驟 1
+- **Exit 1（BLOCKED）** → 停下來，把腳本 stdout/stderr 原樣呈現給使用者，
+  並顯示三選一：
+  ```
+  Pre-check 未通過。請選擇：
+  [1] 立即執行 srs-check（依 BLOCKED 訊息指出的 rid），完成後重新執行 sync
+  [2] 我已確認內容正確，這次強制繼續（跳過 pre-check）
+  [3] 取消本次 sync
+  ```
+  等到使用者輸入 `1` / `2` / `3` 或同義詞才繼續：
+  - `1` → 啟動 srs-check 補齊缺漏的 rid，結束後由使用者自行重跑 sync
+  - `2` → 跳過 pre-check 進入正常流程。**不寫 override 紀錄**（設計取捨：
+    state 只記「實際跑過的事」，不記「使用者選過什麼」；參見
+    `scripts/workflow-state.js` 開頭註解）
+  - `3` → 停止流程，**不**做任何 sync 操作
+- **Exit 2（ERROR）** → 腳本異常，回報 stderr 給使用者處理，不繼續
+
+> 設計註：三選一的選項文字是目前的 default UX。若要改 ordering 或新增
+> 選項，請同時調整 `srs-publish-notion` skill 的對應段落保持一致。
+
 ### Mode A: 單一需求同步（SYNC R00XX）
 
 #### 1. 確認來源檔存在
@@ -169,6 +223,22 @@ node ${CLAUDE_PLUGIN_ROOT}/scripts/validate-structure.js {batch}-SRS
 
 確認 src 結構仍然合規（應該已合規，因為使用者多半才剛 srs-check 過）。
 
+#### 5.5. 寫入 workflow state
+
+`merge-srs.js` 成功後、輸出報告之前，把本次 sync 記入 state：
+
+```bash
+# 記錄 per-rid sync 時間戳
+node ${CLAUDE_PLUGIN_ROOT}/scripts/workflow-state.js record \
+  .claude/workflow-state.json {batch} R00XX sync
+
+# 更新 batch 層級的 last_sync_output_md5（publish pre-check 會比對這個值）
+node ${CLAUDE_PLUGIN_ROOT}/scripts/workflow-state.js set-output-md5 \
+  .claude/workflow-state.json {batch} {batch}-SRS/output/requirements-{batch}.md
+```
+
+若 P.3 階段使用者選 `[2] 強制繼續`，以上兩行仍要跑（state 要反映實際變更）。
+
 #### 6. 輸出同步結果
 
 ```
@@ -198,6 +268,19 @@ node ${CLAUDE_PLUGIN_ROOT}/scripts/validate-structure.js {batch}-SRS
    ```
 4. Sanity check 貳
 5. validate-structure（選用）
+5.5. 寫入 workflow state（全量）：
+
+   ```bash
+   # 對 src/ 下每個 R00XX 寫 sync 紀錄
+   for rid in $(ls {batch}-SRS/src/R*_*.md | sed -E 's|.*/(R[0-9]+)_.*|\1|'); do
+     node ${CLAUDE_PLUGIN_ROOT}/scripts/workflow-state.js record \
+       .claude/workflow-state.json {batch} "$rid" sync
+   done
+
+   node ${CLAUDE_PLUGIN_ROOT}/scripts/workflow-state.js set-output-md5 \
+     .claude/workflow-state.json {batch} {batch}-SRS/output/requirements-{batch}.md
+   ```
+
 6. 輸出總體摘要
 
 ## 邊界情況
@@ -217,6 +300,7 @@ node ${CLAUDE_PLUGIN_ROOT}/scripts/validate-structure.js {batch}-SRS
 - [ ] 「壹、版本說明」已 append 一列（含日期、R 編號、修改項目）
 - [ ] 「貳、需求大綱」已 sanity check（順序、編號、拼字）
 - [ ] 結構 validation 通過（若有跑）
+- [ ] workflow-state 已記錄對應的 `sync` 時間戳並更新 `last_sync_output_md5`
 - [ ] 同步結果已輸出給使用者
 
 ## Integration

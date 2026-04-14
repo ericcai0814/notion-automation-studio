@@ -54,6 +54,24 @@ instance-specific 資料：
 
 ## Workflow
 
+### Preflight: 確保 workflow state 檔存在
+
+本 skill 會在結尾把 `{batch}/R00XX/check` 紀錄寫入使用端專案的
+`.claude/workflow-state.json`，供後續 `srs-sync` / `srs-publish-notion`
+做 pre-check。第一次執行時檔案可能不存在，先呼叫 ensure 腳本：
+
+```bash
+node ${CLAUDE_PLUGIN_ROOT}/scripts/workflow-state.js ensure \
+  .claude/workflow-state.json \
+  ${CLAUDE_PLUGIN_ROOT}/templates/workflow-state.json
+```
+
+腳本行為：
+
+- 檔案已存在 → 印 `OK: state file exists` 並繼續
+- 檔案不存在 → 從 template 複製過去，印「請 `git add` 並 commit」提示
+  後繼續；**不中斷 skill**，由使用者事後手動 commit 讓 state 進入版控
+
 ### Step 0: 載入專案規範
 
 1. `Read CLAUDE.md`（專案 root）— 取得需求清單、術語對照表、子系統對照
@@ -238,6 +256,22 @@ node ${CLAUDE_PLUGIN_ROOT}/scripts/validate-structure.js {batch}-SRS
 
 ✅ = 通過無需修改；⚠️ = 有修正並簡述改了什麼。
 
+### Step 5: 記錄完成至 workflow state
+
+所有檢核與修正都完成、Step 4 摘要已輸出之後，呼叫 workflow-state 腳本
+把完成時間戳寫入 state 檔：
+
+```bash
+node ${CLAUDE_PLUGIN_ROOT}/scripts/workflow-state.js record \
+  .claude/workflow-state.json \
+  {batch} R00XX check
+```
+
+**只在 skill 完整跑完時**執行。若中途被使用者取消、或 Step 1–3 錯誤退出，
+**不要**寫紀錄 — workflow state 必須反映實際完成的事，不反映意圖。
+
+此紀錄讓後續 `srs-sync R00XX` 的 pre-check 能確認 R00XX 已 check 過。
+
 ## 完成檢查
 
 - [ ] 六大章節完整且依序
@@ -248,6 +282,7 @@ node ${CLAUDE_PLUGIN_ROOT}/scripts/validate-structure.js {batch}-SRS
 - [ ] Notion 相容性預檢通過
 - [ ] 補寫內容已標註於摘要
 - [ ] 待釐清項目已列出或確認為「（無）」
+- [ ] workflow-state 已記錄 `{batch}/R00XX/check` 時間戳
 
 ## Integration
 

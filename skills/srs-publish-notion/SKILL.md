@@ -128,6 +128,53 @@ plugin 的 `templates/notion-mapping.json.tmpl`。
 
 ## Workflow
 
+### Preflight: 確保 workflow state + pre-check
+
+#### P.1 ensure state 檔存在
+
+```bash
+node ${CLAUDE_PLUGIN_ROOT}/scripts/workflow-state.js ensure \
+  .claude/workflow-state.json \
+  ${CLAUDE_PLUGIN_ROOT}/templates/workflow-state.json
+```
+
+#### P.2 pre-check-publish
+
+```bash
+node ${CLAUDE_PLUGIN_ROOT}/scripts/workflow-state.js pre-check-publish \
+  .claude/workflow-state.json {batch} {batch}-SRS/output/requirements-{batch}.md
+```
+
+**Pre-check 檢核項目**：
+
+1. Output 檔存在
+2. `state.batches.{batch}.last_sync_output_md5` 已設定
+3. Output 檔的當前 md5 與 state 紀錄相符（偵測 sync 後的手動編輯）
+
+**已知限制（v1，不修）**：若使用者在最後一次 sync 之後新增了
+`src/R00XX_*.md` 但沒重跑 sync，output 檔沒被動過 → md5 仍符合 state →
+pre-check 會放行，但 publish 會漏掉新需求。腳本刻意不跨目錄掃 src/ 以
+維持 pre-check 廉價與局部。使用者應該養成「改 src 一定先 sync」的流程
+規避此案。
+
+#### P.3 結果處理
+
+- **Exit 0** → 進入 Step 1
+- **Exit 1（BLOCKED）** → 停下來，把腳本訊息呈現給使用者，並顯示三選一：
+  ```
+  Pre-check 未通過。請選擇：
+  [1] 立即執行 srs-sync（依 BLOCKED 訊息判斷用 SYNC R00XX 或 SYNC ALL），完成後重新 publish
+  [2] 我已確認內容正確，這次強制繼續（跳過 pre-check）
+  [3] 取消本次 publish
+  ```
+  等使用者輸入後處理：
+  - `1` → 啟動 srs-sync，結束後由使用者自行重跑 publish
+  - `2` → 跳過 pre-check 進入 Step 1。**不寫 override 紀錄**
+  - `3` → 停止流程，**不**做任何 Notion 操作
+- **Exit 2（ERROR）** → 回報 stderr，不繼續
+
+> 三選一選項與 `srs-sync` 保持一致 — 要改一起改。
+
 ### Step 1: 讀取 mapping 與源檔
 
 1. Read `.claude/notion-mapping.json`（專案端）
@@ -348,6 +395,19 @@ pages」錯誤。若仍報錯，停止並回報異常。
 5. 若結構看起來 OK，下次修改源檔後重新執行本 skill
 ```
 
+### Step 8: 寫入 workflow state
+
+Publish 完整成功後（含 6.1 archive、6.2 replace_content、Step 7 mapping
+更新皆通過），記錄 batch 級的 publish 時間戳：
+
+```bash
+node ${CLAUDE_PLUGIN_ROOT}/scripts/workflow-state.js record-publish \
+  .claude/workflow-state.json {batch}
+```
+
+**只在完整成功時**寫入。任何一個前置步驟失敗都不呼叫此命令，讓
+`state.batches.{batch}.last_publish.ts` 忠實反映最後一次成功發佈時間。
+
 ## 完成檢查
 
 - [ ] mapping 檔案已讀取或 Discovery 模式完成
@@ -360,6 +420,7 @@ pages」錯誤。若仍報錯，停止並回報異常。
 - [ ] Notion page 已更新且無 replace_content 誤刪錯誤
 - [ ] mapping 的 last_synced_at 與 last_synced_source_md5 已更新
 - [ ] 發佈報告完整列出待手動處理項目
+- [ ] workflow-state 的 `batches.{batch}.last_publish.ts` 已記錄
 
 ## Integration
 
