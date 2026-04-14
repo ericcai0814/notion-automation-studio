@@ -1,0 +1,12 @@
+{
+  "name": "notion-automation-studio-local",
+  "owner": {
+    "name": "ericcai"
+  },
+  "plugins": [
+    {
+      "name": "notion-automation-studio",
+      "source": "."
+    }
+  ]
+}
