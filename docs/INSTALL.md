@@ -28,15 +28,32 @@ mkdir -p .claude
 
 `{batch}` 用你的批次代號取代，例如 `3-B`、`4-A`、`phase-1`。
 
-### 2. 從 template 複製專案骨架
+### 2. 初始化專案（推薦：對 Claude 說「初始化 SRS 專案」）
+
+在新 repo 目錄下開 Claude Code，對 Claude 說：
+
+> 初始化 SRS 專案
+
+會觸發 `srs-setup` skill，互動式地：
+
+- 建 `.claude/` 目錄與 `workflow-state.json`
+- 詢問 Notion parent page URL、batch ID 後產生 `.claude/notion-mapping.json`
+- 跟你討論專案名稱、子系統、術語、需求清單，建立 `CLAUDE.md` 骨架
+- 偵測 Notion MCP 是否已裝，若沒裝會提示你下一步要跑什麼指令
+
+迷路或想知道目前進度時，對 Claude 說「我現在該做什麼」「健檢一下」或
+「狀態如何」會觸發 `srs-onboard` skill，它會**只讀不寫**地輸出健檢 /
+狀態報告 + 下一步建議。
+
+#### 手動替代方式（不想用 skill 時）
 
 - 複製 `templates/project-CLAUDE.md.tmpl` → `acme-corp-srs/CLAUDE.md`，填入
   專案名稱、子系統、需求清單、術語對照表
 - 複製 `templates/notion-mapping.json.tmpl` → `acme-corp-srs/.claude/notion-mapping.json`，
   填入 Notion parent page ID、toggle label、child page title
+- 複製 `templates/workflow-state.json` → `acme-corp-srs/.claude/workflow-state.json`
 
-這兩個範本存放於 plugin 的 `templates/` 目錄，可用 `cat` 或 Claude Code
-內建的檔案讀取功能取得內容。
+這三個範本都在 plugin 的 `templates/` 目錄。
 
 ### 3. 安裝 Notion MCP plugin 並授權
 
