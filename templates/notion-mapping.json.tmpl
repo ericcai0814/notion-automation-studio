@@ -1,0 +1,18 @@
+{
+  "_comment": "Notion publish mapping。每個 batch 一組設定。parent_page_id 是 Notion 父頁面 UUID；toggle_label 與 child_page_title 須與 Notion 端實際名稱字字相符。child_page_id / child_page_url 首次 PUBLISH 後由 srs-publish-notion skill 自動回填。images 物件的 key 是相對於 {batch}-SRS/assets/ 的路徑，v1 階段由使用者手動上傳 Notion 後回填 md5 與 notion_url。",
+  "batches": {
+    "{BATCH_ID}": {
+      "parent_page_id": "{PARENT_PAGE_UUID}",
+      "parent_page_url": "https://www.notion.so/{PARENT_PAGE_SLUG}",
+      "sandbox": {
+        "toggle_label": "《需求分析》",
+        "child_page_title": "需求說明文件{BATCH_ID}",
+        "child_page_id": null,
+        "child_page_url": null,
+        "last_synced_at": null,
+        "last_synced_source_md5": null
+      },
+      "images": {}
+    }
+  }
+}

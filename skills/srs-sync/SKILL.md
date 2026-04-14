@@ -1,7 +1,7 @@
 ---
 name: srs-sync
 description: >
-  台積電宿舍管理 SRS 需求文件同步流程。
+  SRS 需求文件同步流程（獨立 .md ↔ 整合版）。
   當用戶輸入「SYNC R00XX」「同步 R00XX」「SYNC ALL」
   或在修改 src/ 後需要將內容同步至 output/requirements-{batch}.md 時觸發。
   確保獨立需求檔與整合版需求文件兩處內容一致，並維護版本說明紀錄。
@@ -21,7 +21,7 @@ description: >
 
 ```
 業務層：srs-sync skill（本檔）
-  └─ 工具層：.claude/scripts/merge-srs.js（純 node，no LLM）
+  └─ 工具層：${CLAUDE_PLUGIN_ROOT}/scripts/merge-srs.js（純 node，no LLM）
 ```
 
 **分工原則**：
@@ -34,8 +34,8 @@ description: >
 本 skill 操作對象是「某個 SRS batch」，目錄結構為 `{batch}-SRS/`。執行任何
 動作前，必須先決定 **batch ID**：
 
-1. **若使用者輸入有明確 batch 指定**（例如「對 3-B 跑」、「in 3-B」、
-   「batch 4-A」、「3-B 的 R0044」），用該 batch
+1. **若使用者輸入有明確 batch 指定**（例如「對 3-B 跑」、「in 4-A」、
+   「batch phase-1」、「{batch} 的 R0001」），用該 batch
 2. **否則**：用 Glob 列出 repo root 下所有 `*-SRS/` 目錄
    - **恰好 1 個** → 自動使用該 batch（單 batch 體驗，零摩擦）
    - **0 個** → 報錯「找不到任何 SRS batch」並停止
@@ -48,7 +48,7 @@ description: >
        - 4-A  (4-A-SRS/)
 
      重試指令範例：
-       SYNC R0044 in 3-B
+       SYNC R0001 in 3-B
        同步 3-B 的所有需求
      ```
 3. **不要猜**。寧可報錯讓使用者明確指定，也不要默默選一個。
@@ -58,15 +58,12 @@ description: >
 - src 目錄：`{batch}-SRS/src/`
 - output 檔：`{batch}-SRS/output/requirements-{batch}.md`
 - assets 目錄：`{batch}-SRS/assets/`
-- Notion target：讀 `.claude/notion-mapping.json` 的 `batches[{batch}]`
-
-**目前狀態**：repo 只有 `3-B-SRS/`，所以單 batch 自動推斷會直接用它。本檔
-案的範例都以 `3-B` 為具體例，但邏輯適用任何 batch。
+- Notion target：讀專案的 `.claude/notion-mapping.json` 的 `batches[{batch}]`
 
 ## Trigger
 
-- `SYNC R0044`、`/srs-sync R0044`
-- 「同步 R0044 到總整」「把 R0050 更新到總整文件」
+- `SYNC R0001`、`/srs-sync R0001`
+- 「同步 R0001 到總整」「把 R0002 更新到總整文件」
 - `SYNC ALL` / `/srs-sync-all` — 對所有需求依序執行
 
 ## 來源與目標
@@ -87,24 +84,24 @@ description: >
 
 | 修改日期 | 需求編號 | 修改項目 |
 |---|---|---|
-| 2026-04-13 | R0044 | 同步點檢流程更新 |
+| YYYY-MM-DD | R0001 | 同步 {某變更描述} |
 | ... | ... | ... |
 
 # 貳、需求大綱
 
-- 【R0044】點檢作業功能
-- 【R0050】報修作業功能
+- 【R0001】{功能名稱 1}
+- 【R0002】{功能名稱 2}
 - ...
 
 # 參、需求內容
 
-## 【R0044】點檢作業功能
-（R0044 全文，從 src/R0044_*.md 串入）
+## 【R0001】{功能名稱 1}
+（R0001 全文，從 src/R0001_*.md 串入）
 
 ---
 
-## 【R0050】報修作業功能
-（R0050 全文）
+## 【R0002】{功能名稱 2}
+（R0002 全文）
 ...
 ```
 
@@ -127,7 +124,7 @@ ls {batch}-SRS/src/R00XX_*.md
 #### 2. 執行 merge 腳本
 
 ```bash
-node .claude/scripts/merge-srs.js {batch}-SRS
+node ${CLAUDE_PLUGIN_ROOT}/scripts/merge-srs.js {batch}-SRS
 ```
 
 此腳本會：
@@ -137,7 +134,7 @@ node .claude/scripts/merge-srs.js {batch}-SRS
 - **保留**既有 `output/requirements-{batch}.md` 的「壹、版本說明」表格
 
 > 注意：腳本是「全量重產」，不是 incremental update。即使你只改了
-> R0044，merge 後 R0050~R0060 的對應段落也會被重新串入。這是預期行為。
+> R0001，merge 後其他 R 檔的對應段落也會被重新串入。這是預期行為。
 
 #### 3. LLM：維護「壹、版本說明」
 
@@ -150,23 +147,24 @@ node .claude/scripts/merge-srs.js {batch}-SRS
    | YYYY-MM-DD | R00XX | <修改項目描述> |
    ```
    - **修改項目描述**由 LLM 根據實際改了什麼撰寫（不要寫死成「同步」）
-   - 例如：「點檢流程新增異常項目處理」、「報修表單新增三個欄位」
+   - 例如：「{某流程}新增異常項目處理」、「{某表單}新增三個欄位」
    - 若無法判斷具體變更，回退到「同步自 src/R00XX_*.md」
 
 #### 4. LLM：sanity check「貳、需求大綱」
 
 腳本自動產生 貳，但 LLM 應再 Read 一次 output，確認：
-- 貳 列出 9 份需求（或實際 src 數量）
+- 貳 列出的需求份數與 src 目錄中 R-files 數量一致
 - 順序按 R 編號遞增
 - 標題拼字、括號全形/半形與 src 一致
-- 沒有編號跳號（例如缺 R0055，應該確認是預期還是 src 漏檔）
+- 沒有編號跳號（例如專案 CLAUDE.md 需求清單有 R0055，但 src 沒有；
+  應該確認是預期還是 src 漏檔）
 
 若有異常，回報並建議使用者檢查 src/。
 
 #### 5. 結構驗證（選用）
 
 ```bash
-node .claude/scripts/validate-structure.js {batch}-SRS
+node ${CLAUDE_PLUGIN_ROOT}/scripts/validate-structure.js {batch}-SRS
 ```
 
 確認 src 結構仍然合規（應該已合規，因為使用者多半才剛 srs-check 過）。
@@ -180,8 +178,8 @@ node .claude/scripts/validate-structure.js {batch}-SRS
 - {batch}-SRS/output/requirements-{batch}.md
 
 ### 維護紀錄
-- 壹、版本說明：新增一列 → `2026-04-13 | R0044 | 點檢流程新增異常項目處理`
-- 貳、需求大綱：sanity check ✓（共 9 份需求，順序正確）
+- 壹、版本說明：新增一列 → `YYYY-MM-DD | R00XX | {具體變更描述}`
+- 貳、需求大綱：sanity check ✓（共 N 份需求，順序正確）
 - 參、需求內容：merge-srs.js 自動重產
 
 ### 下一步建議
@@ -193,7 +191,7 @@ node .claude/scripts/validate-structure.js {batch}-SRS
 跟 Mode A 幾乎一樣，差別只在「壹、版本說明」的新版本列：
 
 1. 確認 `src/` 下有 R-files
-2. 跑 `node .claude/scripts/merge-srs.js {batch}-SRS`
+2. 跑 `node ${CLAUDE_PLUGIN_ROOT}/scripts/merge-srs.js {batch}-SRS`
 3. LLM Edit 壹 加入一列：
    ```
    | YYYY-MM-DD | (全量) | 全量同步 — N 份需求 |
@@ -215,7 +213,7 @@ node .claude/scripts/validate-structure.js {batch}-SRS
 ## 完成檢查
 
 - [ ] 來源檔存在
-- [ ] `node .claude/scripts/merge-srs.js {batch}-SRS` 已執行成功
+- [ ] `node ${CLAUDE_PLUGIN_ROOT}/scripts/merge-srs.js {batch}-SRS` 已執行成功
 - [ ] 「壹、版本說明」已 append 一列（含日期、R 編號、修改項目）
 - [ ] 「貳、需求大綱」已 sanity check（順序、編號、拼字）
 - [ ] 結構 validation 通過（若有跑）
@@ -228,7 +226,7 @@ node .claude/scripts/validate-structure.js {batch}-SRS
 | 前置 | `srs-check` skill — 先修正再 sync |
 | 後續 | `srs-publish-notion` skill — sync 完後發佈到 Notion 沙箱 |
 | 觸發來源 | 使用者手動執行或在 `srs-check` 完成後接續 |
-| 腳本依賴 | `.claude/scripts/merge-srs.js`（必須存在；否則 sync 無法執行） |
+| 腳本依賴 | `${CLAUDE_PLUGIN_ROOT}/scripts/merge-srs.js`（plugin 內建；plugin 未裝則 sync 無法執行） |
 
 ## 預期的完整流程序列
 

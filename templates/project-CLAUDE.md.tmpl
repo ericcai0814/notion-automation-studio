@@ -1,0 +1,83 @@
+# CLAUDE.md
+
+{PROJECT_NAME} SRS 文件庫。本 repo 為**純文件專案**，以 zh-TW Markdown
+撰寫需求文件，透過 `notion-automation-studio` plugin 發佈到 Notion
+workspace 供客戶審閱。
+
+## Plugin 依賴
+
+本專案的所有自動化 skill（`srs-check`、`srs-sync`、`srs-publish-notion`、
+`srs-new-batch`）由 `notion-automation-studio` plugin 提供。若 plugin
+未安裝：
+
+```
+/plugin install notion-automation-studio
+```
+
+## 子系統對照（請依實際專案填寫）
+
+| 子系統 | 使用對象 |
+|--------|----------|
+| {子系統 A} | {角色 1}、{角色 2} |
+| {子系統 B} | {角色 3}、{角色 4} |
+
+## 目錄結構
+
+```
+{BATCH_ID}-SRS/
+├── output/                  # 整合版需求文件 requirements-{BATCH_ID}.md（merge-srs.js 產出）
+├── src/                     # 各需求獨立 .md（日常編輯入口，source of truth）
+└── assets/{R00XX}/          # 圖片附件，依需求編號分群
+```
+
+**鐵則**：
+- 日常編輯**只**改 `src/`，再透過 `srs-sync` skill 同步到 `output/`
+- **禁止**直接編輯 `output/requirements-{BATCH_ID}.md`
+- **禁止**在總整文件上做反向同步
+
+## 需求清單（請依實際專案填寫）
+
+`srs-check` skill 在驗證需求編號引用時會以本表為準。
+
+| 編號 | 功能名稱 |
+|------|----------|
+| R0001 | {功能名稱 1} |
+| R0002 | {功能名稱 2} |
+
+## 術語對照表（請依實際專案填寫）
+
+`srs-check` skill 在做術語一致性檢核時，會以本表為依據。新增術語請直接
+在本表增列。
+
+| 統一用詞 | 禁止混用 |
+|----------|----------|
+| {正式用詞 A} | {同義詞 B}、{同義詞 C} |
+| {正式用詞 D} | {同義詞 E} |
+
+## 圖片與驗收條件
+
+- 圖片路徑：`../assets/{R00XX}/{描述}.png`
+- 檔名格式：`{需求編號}_{描述}.png`
+- 驗收條件：`AC-01` 編號，包含「前置條件 → 操作步驟 → 預期結果」
+
+## Notion 發佈目標
+
+- **父頁面**：{Notion workspace 名稱} 內的 {toggle 名稱} toggle
+- **Child page**：需求說明文件{BATCH_ID}
+- **Mapping 檔**：`.claude/notion-mapping.json`（可視團隊政策決定是否 commit）
+
+## 日常工作流
+
+```
+編輯 src/R00XX_*.md
+    ↓
+「SRS R00XX」          ← srs-check skill（10 項檢核並直接修正）
+    ↓
+「SYNC R00XX」         ← srs-sync skill（同步至 output/）
+    ↓
+「PUBLISH」            ← srs-publish-notion skill（發佈至 Notion）
+```
+
+## Git 慣例
+
+Commit message 使用 Traditional Chinese（zh-TW）Conventional Commits 格式。

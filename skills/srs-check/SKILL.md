@@ -1,19 +1,32 @@
 ---
 name: srs-check
 description: >
-  台積電宿舍管理系統 SRS 需求文件審查與修正流程。
+  SRS 需求文件審查與修正流程（zh-TW）。
   當用戶輸入「SRS R00XX」「審查需求 R00XX」「檢查 SRS」「修正需求文件」
   「需求審查」「審一下 R00XX」，或在修改 {batch}-SRS/src/ 下的 .md
   檔案後需要做合規檢核時觸發。
   依據六大章節結構、術語對照表、文字階層、寫作風格、Notion 相容性共 10 項
-  規範逐項檢核並直接修正。
+  規範逐項檢核並直接修正。術語表與需求清單來自專案 CLAUDE.md。
 ---
 
 # SRS 需求文件審查 Skill
 
 審查並修正 `{batch}-SRS/src/R00XX_*.md` 需求文件，確保符合專案
-CLAUDE.md 規範 + 後續 publish 到 Notion 的相容性。本 skill 直接 Edit 修正
-檔案，不只是回報。
+`CLAUDE.md` 規範 + 後續 publish 到 Notion 的相容性。本 skill 直接 Edit
+修正檔案，不只是回報。
+
+## 資料來源分層
+
+本 skill 提供**規則**（六大章節、檢核項目、Notion 相容性限制等），但
+不內建任何 specific 專案的資料。執行前，請從專案 `CLAUDE.md` 載入以下
+instance-specific 資料：
+
+- **需求清單**：專案 `CLAUDE.md` 的「需求清單」章節 — 用於驗證 R00XX 是否存在
+- **術語對照表**：專案 `CLAUDE.md` 的「術語對照表」章節 — 用於檢核 4
+- **子系統對照**：專案 `CLAUDE.md` 的「子系統對照」章節（若有）— 用於角色辨識
+
+若專案 `CLAUDE.md` 缺少這些章節，在輸出檢核摘要時回報「缺少規範來源」並繼續
+以剩下可執行的檢核項目為主。
 
 ## 適用範圍
 
@@ -22,27 +35,11 @@ CLAUDE.md 規範 + 後續 publish 到 Notion 的相容性。本 skill 直接 Edi
 **禁止**直接編輯 `{batch}-SRS/output/requirements-{batch}.md` — 該檔由
 `srs-sync` skill 負責。
 
-## 需求編號清單
-
-若使用者指定的 R00XX 不在下表，回報「需求編號不存在」並停止。
-
-| 編號 | 功能名稱 | 涉及子系統 |
-|------|----------|-----------|
-| R0044 | 點檢作業功能 | 後台／清潔派工／管家 |
-| R0050 | 報修作業功能 | 後台／清潔派工／管家 |
-| R0051 | 扣款參數維護 | 後台 |
-| R0052 | 扣款項目計算 | 後台 |
-| R0053 | 備品參數維護 | 後台 |
-| R0054 | 備品管理功能 | 後台／清潔派工 |
-| R0056 | 寢具送洗管理功能 | 後台／清潔派工 |
-| R0058 | 單身有眷申請 | 後台/預約 |
-| R0060 | 宿舍管家系統登入 QRcode 製作需求 | 管家 |
-
 ## Batch Resolution（多 batch 推斷）
 
 本 skill 操作對象是「某個 SRS batch」。執行前先決定 **batch ID**：
 
-1. **若使用者明確指定** batch（例如「審查 3-B 的 R0044」、「SRS R0044 in 3-B」），用該 batch
+1. **若使用者明確指定** batch（例如「審查 3-B 的 R0001」、「SRS R0001 in 3-B」），用該 batch
 2. **否則**：用 Glob 列出 repo root 下所有 `*-SRS/` 目錄
    - **恰好 1 個** → 自動使用
    - **0 個** → 報錯「找不到任何 SRS batch」
@@ -57,18 +54,24 @@ CLAUDE.md 規範 + 後續 publish 到 Notion 的相容性。本 skill 直接 Edi
 
 ## Workflow
 
+### Step 0: 載入專案規範
+
+1. `Read CLAUDE.md`（專案 root）— 取得需求清單、術語對照表、子系統對照
+2. 若缺 `CLAUDE.md` 或上述章節缺失，標記為「規範來源不完整」並繼續
+
 ### Step 1: 定位與讀取
 
 1. 用 `Glob {batch}-SRS/src/R00XX_*.md` 找到目標檔案
-2. Read 完整檔案內容
-3. 若檔案不存在，回報錯誤並停止流程
+2. 若專案 `CLAUDE.md` 有需求清單，驗證 R00XX 在表中；不在則回報並停止
+3. Read 完整檔案內容
+4. 若檔案不存在，回報錯誤並停止流程
 
 ### Step 1.5: 結構性檢核（腳本）
 
 在進入語意檢核前，先跑結構性 validation 腳本：
 
 ```bash
-node .claude/scripts/validate-structure.js {batch}-SRS
+node ${CLAUDE_PLUGIN_ROOT}/scripts/validate-structure.js {batch}-SRS
 ```
 
 腳本會自動檢查：
@@ -127,22 +130,20 @@ node .claude/scripts/validate-structure.js {batch}-SRS
 
 #### 檢核 4：術語合規
 
-逐字檢查全文，將下表「禁止混用」之詞統一為「統一用詞」，使用 Edit 的
+從**專案 `CLAUDE.md` 的「術語對照表」章節**載入專案實際的術語對照表。
+逐字檢查全文，將「禁止混用」之詞統一為「統一用詞」，使用 Edit 的
 `replace_all: true` 批次替換。
+
+**本 skill 不內建術語表**。以下為範例格式，示範專案 `CLAUDE.md` 裡該
+長什麼樣子（實際內容由專案提供）：
 
 | 統一用詞 | 禁止混用 |
 |----------|----------|
-| 台積電員工（住戶） | 使用者、房客、租戶 |
-| 櫃檯人員 | 櫃台人員、前台人員 |
-| 駐廠人員 | 現場人員 |
-| 承辦人員 | 承辦、管理者 |
-| 排房人員 | 配房人員 |
-| 清潔人員 | 打掃人員、清潔工 |
-| 報修 | 維修申請、修繕申請 |
-| 點檢 | 檢查、巡檢 |
-| 派工 | 指派、發包 |
-| 排房 | 配房、分房 |
-| 備品 | 耗材、物資 |
+| 正式用詞 A | 同義詞 B、同義詞 C |
+| 正式用詞 D | 同義詞 E |
+
+若專案 `CLAUDE.md` 沒有術語表，此檢核項跳過並在摘要標註「⚠️ 術語表缺失
+（請於專案 CLAUDE.md 補上「術語對照表」章節）」。
 
 #### 檢核 5：寫作風格
 
@@ -162,7 +163,7 @@ node .claude/scripts/validate-structure.js {batch}-SRS
 #### 檢核 7：圖片引用
 
 - 路徑格式：`../assets/{需求編號}/{圖片檔名}.png`
-- 須附說明文字（例如「員工點檢表（一般／中文）」）
+- 須附說明文字
 - 檔名格式：`{需求編號}_{描述}.png`
 - 用 Bash `ls` 確認檔案實際存在
 - 不可僅放圖片而無標題說明
@@ -255,4 +256,4 @@ node .claude/scripts/validate-structure.js {batch}-SRS
 | 後續 | 修正完後執行 `srs-sync` skill 同步至總整文件 |
 | 發佈 | 再執行 `srs-publish-notion` skill 發佈到 Notion 沙箱 |
 | 並行 | 多份需求批次審查時使用 `srs-reviewer` agent |
-| 規範來源 | 詳細規則定義於專案 `CLAUDE.md` |
+| 規範來源 | 專案 `CLAUDE.md`（術語表、需求清單、子系統對照）+ 本 skill（六大章節、檢核邏輯、Notion 相容性） |

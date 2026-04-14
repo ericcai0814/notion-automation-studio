@@ -1,0 +1,13 @@
+{
+  "name": "notion-automation-studio",
+  "version": "0.1.0",
+  "description": "SRS 需求文件自動化工作室：檢核、整合、發佈到 Notion 的 skill/agent/script 集合",
+  "keywords": [
+    "srs",
+    "notion",
+    "documentation",
+    "requirements",
+    "zh-tw"
+  ],
+  "license": "MIT"
+}

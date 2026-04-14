@@ -7,6 +7,9 @@ Thumbs.db
 # Claude Code per-user settings（個人權限快取，不可共用）
 .claude/settings.local.json
 
-# Notion publish mapping（v1 X-phase：暫時指向 personal workspace，不入 git）
-# team workspace 授權搞定後，移除此行並 `git add -f .claude/notion-mapping.json`
-.claude/notion-mapping.json
+# Studio 本身不含任何 instance-specific 資料
+# plugin 本地開發測試若需要 notion-mapping.json，放在 .scratch/ 下
+.scratch/
+
+# Worktrees
+.worktrees/

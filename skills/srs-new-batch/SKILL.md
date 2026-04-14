@@ -9,8 +9,8 @@ description: >
 
 # srs-new-batch
 
-建立新的 SRS 批次（例如 `4-A-SRS/`、`3-C-SRS/`），跟既有 `3-B-SRS/`
-平行存在於 repo root。
+建立新的 SRS 批次目錄（例如 `4-A-SRS/`、`3-C-SRS/`），於專案 repo root
+與既有批次平行存在。
 
 ## When to use
 
@@ -43,21 +43,22 @@ description: >
    腳本本身會 refuse 覆寫，但提早警示使用者體驗較好。
 3. **呼叫腳本**：
    ```bash
-   node .claude/scripts/scaffold-batch.js {batch-name}
+   node ${CLAUDE_PLUGIN_ROOT}/scripts/scaffold-batch.js {batch-name}
    ```
 4. **回報結果**：把腳本輸出原樣回給使用者，讓他確認檔案路徑都對。
 5. **提醒下一步**：
    - 改寫 `{batch-name}-SRS/src/R0001_範例需求.md`（或刪除、改名為實際的 R-number）
    - 新增其他需求 .md 檔（每個一份，命名 `R{NNNN}_{中文功能名}.md`）
    - 在 Notion 端為這個新批次建立對應的 toggle + child page（如果要 publish）
-   - **在 `.claude/notion-mapping.json` 的 `batches` 物件下新增 entry**：
+   - **在專案 `.claude/notion-mapping.json` 的 `batches` 物件下新增 entry**
+     （參考 plugin 的 `templates/notion-mapping.json.tmpl`）：
      ```json
      {
        "batches": {
-         "3-B": { "...既有..." },
+         "<既有批次>": { "...": "..." },
          "{batch-name}": {
-           "parent_page_id": "...",
-           "parent_page_url": "...",
+           "parent_page_id": "<parent_page_uuid>",
+           "parent_page_url": "https://www.notion.so/<workspace>/<slug>",
            "sandbox": {
              "toggle_label": "《需求分析》",
              "child_page_title": "需求說明文件{batch-name}",
@@ -82,7 +83,7 @@ description: >
 - 不修改 `notion-mapping.json`（新批次的 Notion target 由使用者另外設定）
 - 不執行 git operations（commit / branch / push）
 - 不呼叫 Notion API
-- 不修改任何現有 `*-SRS/` 批次目錄（不論是 3-B、4-A 還是其他）
+- 不修改任何現有 `*-SRS/` 批次目錄
 
 ## 失敗情境
 
