@@ -13,3 +13,7 @@ Thumbs.db
 
 # Worktrees
 .worktrees/
+
+# Spectra plugin（local SDD 工具，非本 plugin 內容）
+.spectra/
+openspec/.vector-search.db*
