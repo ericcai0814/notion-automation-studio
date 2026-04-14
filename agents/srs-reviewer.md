@@ -3,6 +3,7 @@ name: srs-reviewer
 description: SRS 需求文件批次審查專家。Use PROACTIVELY when reviewing MULTIPLE requirement docs in parallel (e.g., "review all requirements", "audit R0001 and R0002", batch pre-delivery review). Single-doc reviews should use the srs-check skill directly in the main session. Returns a per-doc compliance report + cross-doc consistency findings. Must load the 10-item checklist from srs-check skill at startup.
 tools: ["Read", "Write", "Edit", "Glob", "Bash"]
 model: opus
+color: blue
 ---
 
 # SRS Requirement Document Reviewer
