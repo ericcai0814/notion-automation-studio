@@ -9,5 +9,9 @@
     "requirements",
     "zh-tw"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ericcai0814/notion-automation-studio"
+  }
 }

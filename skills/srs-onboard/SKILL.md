@@ -132,9 +132,88 @@ F. Notion MCP 是否可用？
 | H10 | `.claude/workflow-state.json` 存在 | Glob 找到 |
 | H11 | `workflow-state.json` 的 batch 清單與實際 `*-SRS/` 目錄一致 | 比對兩邊 key |
 | H12 | Notion MCP 可用 | 環境中有 `mcp__plugin_Notion_notion__*` 工具 |
+| H13 | 已知問題 cross-reference | 條件觸發：H1-H12 至少一項 ⚠/✗ 才啟動；無命中 KI 時不產生輸出 |
 
 **注意**：H9 `child_page_id = null` 表示尚未做過首次發佈，輸出 ⚠（非 ✗）
 並建議執行 `PUBLISH` 做 Discovery（首次建立 child page）。
+
+### H13 邏輯詳述（已知問題 cross-reference）
+
+H13 是**條件觸發**的加法檢查項，目的是在健檢出現 ⚠/✗ 時主動對照
+`docs/KNOWN_ISSUES.md`，讓使用者不必手動翻目錄就知道「啊這是已知問題 KI-NNNN」。
+
+#### 啟動條件
+
+- **全綠跳過**：H1 到 H12 全部回報 ✓ → H13 **完全不執行**（不讀 KNOWN_ISSUES.md、
+  不產生「可能是已知問題」區段）。避免無故增加報告噪音
+- **任一 ⚠/✗ 觸發**：H1-H12 中至少一項非 ✓ → H13 啟動 lookup 流程
+
+#### Lookup 流程
+
+1. **收集失敗識別子**：從 H1-H12 結果中取出所有 ⚠ 或 ✗ 項目的識別子，組成集合
+   `failed = { H<i>, H<j>, ... }`。例如若 H5 與 H7 失敗，`failed = {H5, H7}`
+
+2. **讀取 KNOWN_ISSUES.md**：若 `docs/KNOWN_ISSUES.md` 不存在或 Read 失敗，
+   H13 靜默跳過（不 crash，不在報告中抱怨找不到檔案）
+
+3. **解析每條 KI 條目**：用 Read + 手動解析找所有符合 `^## KI-[0-9]{4}` 的條目
+   （**忽略** `KI-EXAMPLE`、HTML comment 內容、以及其他非 `^## KI-\d{4}` pattern
+   的標題）。對每條條目，取其 `Health check trigger` 欄位的**字面值**
+
+   **⚠ Parser 陷阱**：解析時必須**追蹤 block 邊界**——遇到任何 `## ` 開頭的標題
+   時都要「結束上一個 block 的 context」。特別是當你遇到 `## KI-EXAMPLE:` 或其他
+   非 `## KI-\d{4}` pattern 的 h2 標題時，**不要**把它後面的 `Health check trigger`
+   欄位錯歸給前一個真實 KI block。實作 parser 時維護一個 `in_valid_ki_block` 旗標：
+   遇到 `## KI-\d{4}` 設為 true，遇到其他 `## ` 設為 false，只在 flag 為 true 時
+   才處理欄位行。這個陷阱在 CLI 驗證時實測過，naive parser 會把 `KI-EXAMPLE` 的
+   欄位錯歸給前一個 `KI-0005`
+
+4. **1:1 exact identifier match**：把 `Health check trigger` 欄位以逗號 + 空白切
+   split 成 token 陣列（例如 `"H5, H7"` → `["H5", "H7"]`、`"H5"` → `["H5"]`、
+   `"none"` → `["none"]`）。對每個 token：
+   - 若 token 在 `failed` 集合中 → 這條 KI 命中，加入 `matched` 集合
+   - 若 token 是 `none` → 跳過該 token（KI 不綁任何健檢項）
+   - 若 token 是**非法值**（既非 `H1`-`H12` 也非 `none`，例如 `H99`、`bogus`、
+     空字串）→ 跳過該 token 而**非** crash，繼續處理下一個 token
+   - 若整條 KI 所有 token 都非 `failed` 集合的元素 → 這條 KI 不命中
+
+5. **Exact match 的關鍵邊界**：比對必須是**字串相等**，不是 substring / prefix
+   match。特別注意 `H1` **不應**匹配 `H10`、`H11`、`H12`——split 後的 token
+   是 `"H1"`、`"H10"` 等完整字串，字串相等比對才能避開此陷阱
+
+6. **報告附加**：若 `matched` 非空，在原 H1-H12 報告**尾端**新增一個
+   「可能是已知問題」區段列出每條命中的 KI 的 ID、Symptom、Resolution、
+   Related issue。原 H1-H12 的輸出**絕不**修改或隱藏——H13 永遠是加法，不是代換
+
+7. **無命中**：若 `matched` 為空（有 H1-H12 失敗但沒任何 KI 的 trigger 命中），
+   H13 **不**產生「可能是已知問題」區段。絕不產生「查無已知問題」之類的 placeholder
+   文案（那會讓使用者誤以為 H13 有主動保證「沒已知問題」）
+
+#### 輸出格式範例
+
+```
+### 可能是已知問題
+
+以下 KI 條目的 `Health check trigger` 命中本次失敗的健檢項，請對照 Resolution
+看看是否適用你的情境：
+
+#### KI-0001: 批次目錄名稱含空格時 srs-onboard 無法 glob
+
+- **觸發**：H5
+- **Symptom**: 執行 srs-onboard Mode 2 健檢時，H5 項目回報找不到任何 `*-SRS/` 目錄
+- **Resolution**: 將批次目錄重新命名為連字號格式（例如 `3-B-SRS/`）
+- **Related**: #12
+```
+
+#### 絕不做的事
+
+| 禁止行為 | 原因 |
+|----------|------|
+| 修改 H1-H12 原輸出內容 | H13 是加法，保持 H1-H12 可預測 |
+| 對 KI 條目做 keyword / substring match | 會因 LLM 生成的「說明」欄措辭不穩定而不可靠；設計上只認 Health check trigger 欄位的 identifier |
+| 因 KI 條目格式非法 crash Mode 2 報告 | H13 是 best-effort 加法，不得破壞主流程 |
+| 全綠時仍 grep KNOWN_ISSUES.md | 白噪音；全綠直接跳過 |
+| 產生「查無已知問題」placeholder | 誤導使用者以為 H13 有 coverage 保證 |
 
 ---
 
@@ -247,6 +326,21 @@ md5sum output/requirements-{batch}.md  # Linux
 2. ⚠ **H12 Notion MCP 不可用**：請依 `docs/INSTALL.md` 授權 Notion MCP plugin
 
 3. ⚠ **H4 缺少子系統對照**：在 CLAUDE.md 補上「子系統對照」章節，srs-check 才能辨識角色
+
+### 可能是已知問題（H13 cross-reference）
+
+以下 KI 條目的 `Health check trigger` 命中本次失敗的健檢項：
+
+#### KI-0003: notion-mapping.json 缺失時 PUBLISH 卡住
+
+- **觸發**：H7
+- **Symptom**: srs-publish-notion 在 `.claude/notion-mapping.json` 不存在時
+  卡在 Preflight，無明確錯誤訊息
+- **Resolution**: 執行 `srs-setup`，依互動提示建立 `.claude/notion-mapping.json`
+- **Related**: #18
+
+（若本次健檢全綠，H13 不啟動，此區段不出現；若有失敗但無 KI 命中，此區段
+同樣不出現——不會顯示 placeholder。）
 ```
 
 ---
