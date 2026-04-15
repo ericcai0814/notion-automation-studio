@@ -1,0 +1,13 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 在 Claude Code 對話中直接回報（report-issue skill）
+    url: https://github.com/ericcai0814/notion-automation-studio#%E9%81%87%E5%88%B0%E5%95%8F%E9%A1%8C
+    about: >-
+      在 Claude Code 對話中說「壞了」「卡住」「回報問題」會自動觸發 report-issue
+      skill，互動式蒐集資訊後產生一個 pre-filled 的 GitHub issue URL，摩擦比網頁
+      直接開 issue 更低。詳見 README 的「遇到問題?」章節。
+  - name: 已知問題目錄（docs/KNOWN_ISSUES.md）
+    url: https://github.com/ericcai0814/notion-automation-studio/blob/main/docs/KNOWN_ISSUES.md
+    about: >-
+      開 issue 前請先瞥一眼已知問題目錄。若你遇到的症狀已經記錄在 KI-NNNN 條目
+      裡，通常那一頁直接就有解法或 workaround。
