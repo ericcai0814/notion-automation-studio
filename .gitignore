@@ -19,3 +19,4 @@ Thumbs.db
 .spectra/
 .spectra.yaml
 openspec/
+openspec/.vector-search.db*
