@@ -55,14 +55,40 @@ mkdir -p .claude
 
 這三個範本都在 plugin 的 `templates/` 目錄。
 
-### 3. 安裝 Notion MCP plugin 並授權
+### 3. 設定 Notion 連線（兩個 MCP，角色不同）
+
+`notion-automation-studio` 目前同時依賴**兩條** Notion MCP 路線，原因是
+官方 `@notionhq/notion-mcp-server`（integration token 路線）的 OpenAPI
+spec 只支援 `paragraph` + `bulleted_list_item` 兩種寫入 block type，無法
+滿足 `srs-publish-notion` 需要 heading / code / table / callout / toggle
+等的需求。完整背景見 `docs/srs-publish-notion-refactor.md`。
+
+#### 3-a：notionApi（integration token，setup / check / sync 用）
+
+由 `srs-setup` skill 互動式建立。對 Claude 說「初始化 SRS 專案」會自動
+進入 Step 4 引導：
+
+- 建立 Notion internal integration、複製 ntn_ 開頭 token
+- 從模板複製 `./.mcp.json` 並 gitignore
+- 提示你自己用編輯器把 token 填進 `./.mcp.json`（**不要貼進對話框**）
+- 重啟 Claude Code 後 `notionApi ✓ Connected`
+
+完成後可使用：`srs-check`、`srs-sync`、以及 `Notion@claude-plugins-official`
+plugin 的 6 個 `/Notion:*` slash command。
+
+#### 3-b：OAuth Notion plugin（publish 才需要）
 
 ```
 /plugin install Notion
 ```
 
-依指引登入目標 Notion workspace。這一步是 `srs-publish-notion` skill 的
-必要依賴。
+來源 `claude-plugins-official`，作者 Notion Labs。安裝後依指引完成 OAuth
+登入授權。這一步**只**有在你要使用 `srs-publish-notion` 時才需要——它提供
+高階 markdown-aware 的 `notion-fetch` / `notion-update-page` tools，也就是
+publish 流程目前依賴的工具。
+
+> **這是已知的暫時雙路線狀態**。長期目標是把 `srs-publish-notion` 改成
+> 只用 notionApi 一條路，前置調研見 `docs/srs-publish-notion-refactor.md`。
 
 ### 4. 在 Notion 建立沙箱結構（一次性）
 
