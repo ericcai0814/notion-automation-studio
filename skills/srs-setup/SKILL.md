@@ -240,39 +240,84 @@ Notion MCP（notionApi）已連線，跳過 Step 4。
 
 ---
 
-#### 4-e：印出 token 填寫與重啟指引
+#### 4-e：填入 token 的安全流程
 
-**強制安全守則**：使用者**絕對不能**把 token 貼進 Claude 對話框（會永久留在
-transcript）。本 skill 只負責印指引，由使用者在自己的編輯器內完成編輯。
+**兩條已知的 token 洩漏管道**（這決定了流程順序）：
+
+1. **對話框洩漏**：token 被貼進 Claude 對話框 → 永久寫入 transcript
+2. **file-watcher 洩漏**（2026-04-15 發現）：Claude Code 的 file watcher
+   會在 project 內任何檔案被外部修改時，把**新檔案內容**透過
+   `<system-reminder>` 推送給 assistant。如果 session active 時用編輯器
+   改 `.mcp.json` 並存檔，token 會透過這條路徑進 transcript——使用者完全
+   沒貼進對話框，結果一樣洩漏。詳見 `docs/srs-publish-notion-refactor.md`
+   第 8.10 節
+
+**強制安全流程**——必須嚴格照順序執行。
 
 ```
-.mcp.json 已建立且 gitignored。接下來請你自己做：
+【步驟 1：先關閉目前的 Claude Code session】
 
-1) 用你的編輯器打開 ./.mcp.json
-2) 把 __REPLACE_WITH_YOUR_NOTION_INTEGRATION_TOKEN__ 整段
-   換成 ntn_ 開頭的真實 token（保留前後雙引號，只替換中間的字串）
-3) 存檔
-4) 完全關閉並重新啟動 Claude Code（不是 reload session、是新 process）
-5) 啟動時會跳出 trust prompt 詢問是否信任此 project 的 .mcp.json，按 yes
-6) 重啟後執行 `claude mcp list` 確認：
-       notionApi: ... ✓ Connected
+1a) 在目前的 Claude Code 對話框輸入 /quit，或按 Ctrl+C / Ctrl+D
+1b) 確認 terminal prompt 回到 shell（看到 $ 或 % 提示符，不再是
+    Claude 的 input box）
+1c) 不可以只 /clear、/reload、或切 session——必須讓 Claude Code
+    process 完全結束。這一步是整個流程的關鍵：session 關了，file
+    watcher 也關了，步驟 2 才不會觸發洩漏
 
-若看到錯誤，最常見三個原因：
+【步驟 2：用編輯器修改 token】
+
+2a) 用編輯器打開 ./.mcp.json
+2b) 把 __REPLACE_WITH_YOUR_NOTION_INTEGRATION_TOKEN__ 整段換成 ntn_
+    開頭的真實 token（保留前後雙引號，只替換中間字串）
+2c) 存檔、關閉編輯器
+
+【步驟 3：開新 Claude Code session】
+
+3a) 在 terminal 跑 `claude` 開新 session
+3b) 首次啟動會跳 trust prompt 詢問是否信任此 project 的 .mcp.json，按 yes
+3c) 執行 `claude mcp list` 確認：
+        notionApi: ... ✓ Connected
+
+【步驟 4（選用但強烈建議）：洩漏自檢】
+
+在新 session 問 Claude：
+
+    請掃描這個 session 目前為止的歷史內容，找有沒有出現 ntn_
+    開頭、長度大約 50 字元的字串（注意：我這句問題本身包含
+    "ntn_" 4 個字元，但不是 token，請忽略）。只回答「有」或
+    「沒有」，如果有請說明出現在哪個訊息、但**絕對不要**把
+    該字串本身印出來。
+
+- 回答「沒有」：流程安全，進入 Step 5
+- 回答「有」：代表某一步有漏（最常見是忘了關 session）。立刻到
+  https://www.notion.so/profile/integrations rotate 該 integration
+  secret，然後從步驟 1 重做整個流程
+
+若連線失敗，最常見三個原因：
   - integration 沒被 share 給父頁面（4-b 步驟 5）→ 401
   - token 貼錯（多空格、缺字元、雙引號被刪掉）
   - 網路問題導致 npx 抓不到 @notionhq/notion-mcp-server
 
-⚠️ 提醒：絕對不要把 token 貼進對話框。
+⚠️ 三條鐵則：
+  1. 絕對不把 token 貼進 Claude 對話框
+  2. 絕對不在 Claude session 還活著時改 .mcp.json
+  3. 懷疑洩漏就 rotate，不猶豫、不省事
 ```
 
 ---
 
 #### 4-f：進階替代（選讀，本 skill 不執行）
 
-若不想把明文 token 寫進任何檔案（多人共用機器、合規要求），可改用
-macOS Keychain / Windows Credential Manager / 1Password CLI / bitwarden-cli
-取出 token，再透過 wrapper script 注入到 spawned MCP server process。
-本 skill 不示範這條路徑——對單人本機開發而言，gitignored 明文已足夠安全。
+若不想把明文 token 寫進任何檔案，或想從源頭消除 4-e 的 file-watcher
+洩漏風險，可改用 macOS Keychain / Windows Credential Manager /
+1Password CLI / bitwarden-cli 取出 token，再透過 wrapper script 注入到
+spawned MCP server process。keychain 路線的優點是 `.mcp.json` 檔裡完全
+沒有 secret，即使在 Claude session active 時被 file-watcher 掃到，也沒
+東西可洩漏。
+
+本 skill 不示範這條路徑——設計權衡上 gitignored 明文 + 嚴格執行 4-e
+的安全流程對單人本機開發已足夠。若團隊共用機器或有合規要求，優先
+評估本節。
 
 ---
 
@@ -463,6 +508,7 @@ Notion MCP 無法在 toggle block 內建立子頁面（API 限制），需手動
 - [ ] `.claude/workflow-state.json` 存在（版本 1，空 batches）
 - [ ] `.claude/notion-mapping.json` 含有真實的 parent_page_id 與 batch 設定
 - [ ] `./.mcp.json` 存在，且已 gitignored（token 由使用者手動填入）
+- [ ] 使用者理解 4-e 的「**先關閉 session → 改檔 → 開新 session**」順序，不會在 Claude active 時改 `.mcp.json`
 - [ ] CLAUDE.md 含有「子系統對照」「需求清單」「術語對照表」三個章節
 - [ ] 使用者知道 Notion toggle / child page 須手動建立（若尚未建立）
 - [ ] 使用者知道**若要使用 srs-publish-notion，還需要額外裝 OAuth Notion plugin**（4-g）
@@ -505,6 +551,7 @@ Notion MCP 無法在 toggle block 內建立子頁面（API 限制），需手動
 | 使用者在 plugin repo 本身執行 srs-setup | 回報「偵測到 plugin 維護者環境（`${CLAUDE_PLUGIN_ROOT}` 位於當前目錄）」，拒絕執行並提示切換至使用端 repo |
 | Notion MCP 工具清單為空（沙箱 / 隔離環境） | 假設未連線，執行 Step 4 完整流程；若 `.mcp.json` 已存在但仍無工具，提示使用者檢查 token 是否填入並重啟 Claude Code |
 | 使用者把 token 貼進 Claude 對話框 | 立刻警告 token 已寫入 transcript，建議立即去 Notion 撤掉舊 token、產生新 token，並重申 4-e 安全守則 |
+| 使用者在 session active 時編輯 `.mcp.json`，觸發 file-modification `<system-reminder>`（2026-04-15 實測過的洩漏場景） | 視同 token 洩漏。立刻警告 token 已進 transcript（即使使用者完全沒貼進對話框），建議立即到 Notion 該 integration rotate secret，並重申 4-e 步驟 1「必須先關閉 session 才能改檔」 |
 | `.mcp.json` 已存在但內容不是合法 JSON | 回報解析錯誤位置，請使用者修正後重新執行 skill |
 | `git check-ignore -v .mcp.json` 回傳非 0（gitignore 未生效） | 停止流程，回報 4-d 寫入失敗，請使用者手動加入並重新執行 |
 | Write 工具因權限問題失敗 | 回報 fs 錯誤路徑，提示使用者確認目錄寫入權限 |
