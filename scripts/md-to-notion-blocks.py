@@ -53,6 +53,42 @@ from pathlib import Path
 # Rich Text Parser
 # ============================================================
 
+def split_rich_text_content(content, max_len=2000):
+    """
+    將超過 max_len 的文字切成多段。
+    切分優先順序：換行 > 空白 > 硬切。
+    """
+    if len(content) <= max_len:
+        return [content]
+
+    chunks = []
+    remaining = content
+    while remaining:
+        if len(remaining) <= max_len:
+            chunks.append(remaining)
+            break
+
+        # 優先在換行處切
+        cut = remaining.rfind('\n', 0, max_len)
+        if cut > 0:
+            chunks.append(remaining[:cut])
+            remaining = remaining[cut + 1:]
+            continue
+
+        # 次優先在空白處切
+        cut = remaining.rfind(' ', 0, max_len)
+        if cut > 0:
+            chunks.append(remaining[:cut])
+            remaining = remaining[cut + 1:]
+            continue
+
+        # 硬切
+        chunks.append(remaining[:max_len])
+        remaining = remaining[max_len:]
+
+    return chunks
+
+
 def parse_rich_text(text):
     """
     解析 Markdown 行內格式為 Notion rich_text 陣列。
@@ -96,21 +132,21 @@ def parse_rich_text(text):
         if m.start() > last_end:
             plain = text[last_end:m.start()]
             if plain:
-                parts.append(_text_obj(plain))
+                parts.extend(_text_obj_list(plain))
 
         if m.group(1):
             # inline code
             code_content = m.group(1)[1:-1]
-            parts.append(_text_obj(code_content, code=True))
+            parts.extend(_text_obj_list(code_content, code=True))
         elif m.group(2):
             # inline image → 只取 alt text，圖片本身會在 block 層級處理
             alt_text = m.group(3) or "image"
-            parts.append(_text_obj(alt_text))
+            parts.extend(_text_obj_list(alt_text))
         elif m.group(5):
             # link [text](url)
             link_text = m.group(6)
             link_url = m.group(7)
-            parts.append(_text_obj(link_text, link=link_url))
+            parts.extend(_text_obj_list(link_text, link=link_url))
         elif m.group(8):
             # inline equation
             expr = m.group(9)
@@ -120,28 +156,28 @@ def parse_rich_text(text):
             })
         elif m.group(10):
             # bold+italic ***
-            parts.append(_text_obj(m.group(11), bold=True, italic=True))
+            parts.extend(_text_obj_list(m.group(11), bold=True, italic=True))
         elif m.group(12):
             # bold+italic ___
-            parts.append(_text_obj(m.group(13), bold=True, italic=True))
+            parts.extend(_text_obj_list(m.group(13), bold=True, italic=True))
         elif m.group(14):
             # bold **
-            parts.append(_text_obj(m.group(15), bold=True))
+            parts.extend(_text_obj_list(m.group(15), bold=True))
         elif m.group(16):
             # bold __
-            parts.append(_text_obj(m.group(17), bold=True))
+            parts.extend(_text_obj_list(m.group(17), bold=True))
         elif m.group(18):
             # italic *
-            parts.append(_text_obj(m.group(19), italic=True))
+            parts.extend(_text_obj_list(m.group(19), italic=True))
         elif m.group(20):
             # italic _
-            parts.append(_text_obj(m.group(21), italic=True))
+            parts.extend(_text_obj_list(m.group(21), italic=True))
         elif m.group(22):
             # strikethrough ~~
-            parts.append(_text_obj(m.group(23), strikethrough=True))
+            parts.extend(_text_obj_list(m.group(23), strikethrough=True))
         elif m.group(24):
             # underline <u>
-            parts.append(_text_obj(m.group(25), underline=True))
+            parts.extend(_text_obj_list(m.group(25), underline=True))
 
         last_end = m.end()
 
@@ -149,9 +185,9 @@ def parse_rich_text(text):
     if last_end < len(text):
         remaining = text[last_end:]
         if remaining:
-            parts.append(_text_obj(remaining))
+            parts.extend(_text_obj_list(remaining))
 
-    return parts if parts else [_text_obj(text)]
+    return parts if parts else _text_obj_list(text)
 
 
 def _text_obj(content, bold=False, italic=False, strikethrough=False,
@@ -183,6 +219,17 @@ def _text_obj(content, bold=False, italic=False, strikethrough=False,
         obj["annotations"] = annotations
 
     return obj
+
+
+def _text_obj_list(content, bold=False, italic=False, strikethrough=False,
+                   underline=False, code=False, color="default", link=None):
+    """建立 Notion rich_text text object 列表。content > 2000 字時自動拆分，共用 annotations。"""
+    chunks = split_rich_text_content(content)
+    return [
+        _text_obj(chunk, bold=bold, italic=italic, strikethrough=strikethrough,
+                  underline=underline, code=code, color=color, link=link)
+        for chunk in chunks
+    ]
 
 
 # ============================================================
@@ -711,7 +758,7 @@ def _parse_column_children(lines, i, columns_line_num, images_map=None, md_dir=N
             if level <= 4:
                 children.append(block_heading(level, parse_rich_text(lc)))
             else:
-                children.append(block_paragraph([_text_obj(lc, bold=True)]))
+                children.append(block_paragraph(_text_obj_list(lc, bold=True)))
                 print(f"H{level} downgraded to bold paragraph, consider restructuring source", file=sys.stderr)
             i += 1
         elif lt == 'image':
@@ -796,7 +843,7 @@ def convert_markdown_to_blocks(text, images_map=None, md_dir=None):
                 blocks.append(block_heading(level, rich_text, color=color))
             else:
                 # H5/H6 → paragraph with bold rich_text
-                rich_text = [_text_obj(content, bold=True)]
+                rich_text = _text_obj_list(content, bold=True)
                 blocks.append(block_paragraph(rich_text, color=color))
                 print(
                     f"H{level} downgraded to bold paragraph, consider restructuring source",
@@ -833,7 +880,7 @@ def convert_markdown_to_blocks(text, images_map=None, md_dir=None):
                 i += 1
 
             code_content = '\n'.join(code_lines)
-            rich_text = [_text_obj(code_content)]
+            rich_text = _text_obj_list(code_content)
             blocks.append(block_code(rich_text, language=language))
             continue
 
@@ -989,7 +1036,7 @@ def convert_markdown_to_blocks(text, images_map=None, md_dir=None):
                     if hlevel <= 4:
                         toggle_children.append(block_heading(hlevel, parse_rich_text(lc)))
                     else:
-                        toggle_children.append(block_paragraph([_text_obj(lc, bold=True)]))
+                        toggle_children.append(block_paragraph(_text_obj_list(lc, bold=True)))
                         print(f"H{hlevel} downgraded to bold paragraph, consider restructuring source", file=sys.stderr)
                 else:
                     toggle_children.append(block_paragraph(parse_rich_text(lc)))
