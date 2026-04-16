@@ -512,8 +512,9 @@ def block_column_list(columns):
     return {
         "object": "block",
         "type": "column_list",
-        "column_list": {},
-        "children": columns
+        "column_list": {
+            "children": columns
+        }
     }
 
 
@@ -522,8 +523,9 @@ def block_column(children, width_ratio=None):
     col = {
         "object": "block",
         "type": "column",
-        "column": {},
-        "children": children
+        "column": {
+            "children": children
+        }
     }
     if width_ratio is not None:
         col["column"]["width_ratio"] = width_ratio

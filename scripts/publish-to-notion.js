@@ -433,18 +433,21 @@ function safetyCheck(blocks) {
  * Pass 2: GET column IDs, then append saved children to each column
  */
 async function appendColumnListTwoPass(parentId, block) {
-  const originalColumns = block.children || [];
-  const savedColumnChildren = originalColumns.map((col) => col.children || []);
+  const columnListData = block.column_list || {};
+  const originalColumns = columnListData.children || [];
+  const savedColumnChildren = originalColumns.map((col) => {
+    const colData = col.column || {};
+    return colData.children || [];
+  });
 
   const strippedColumns = originalColumns.map((col) => {
-    const { children: _children, ...rest } = col;
-    return rest;
+    const { children: _children, ...restColumn } = col.column || {};
+    return { ...col, column: restColumn };
   });
 
   const strippedBlock = {
     type: 'column_list',
-    column_list: block.column_list || {},
-    children: strippedColumns,
+    column_list: { children: strippedColumns },
   };
 
   const appendRes = await api.appendBlockChildren(parentId, [strippedBlock]);
