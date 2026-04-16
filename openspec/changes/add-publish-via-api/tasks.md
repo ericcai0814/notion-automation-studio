@@ -1,6 +1,6 @@
 ## 1. Spike：驗證 Notion API 邊界行為（implementation 前必做）
 
-- [x] 1.1 Spike `column_list` nesting 限制：實測「一次 append 含 `column_list → column → paragraph` 的 3 層 payload」是否回 422；若成立則驗證「第一次 append `column_list + 空 column`、取回 column.id、第二次 append paragraph」可行，記錄 column.id 的回傳位置（response `results[]` 中）
+- [x] 1.1 Spike `column_list` nesting 限制（驗證 Decision 6：column nesting — one-shot default, two-pass fallback 前提）：實測「一次 append 含 `column_list → column → paragraph` 的 3 層 payload」是否回 422；若成立則驗證「第一次 append `column_list + 空 column`、取回 column.id、第二次 append paragraph」可行，記錄 column.id 的回傳位置（response `results[]` 中）
   > **Result (2026-04-15)**: 假設被推翻。3 層 payload = 200 OK。Two-pass 可行但非必須。Column ID 不在 PATCH response 中，需 GET /children。Decision 6 修訂為 one-shot default + 422 fallback。詳見 `spikes/01-column-list-nesting.result.json`
 - [x] 1.2 Spike 一次 append 多個 `column_list`：驗證「同 request 中兩個 column_list 互為 sibling」是否合法；作為 Decision 6 two-pass 策略的併發優化依據
   > **Result (2026-04-16)**: 確認可行。2 個 column_list（2-col + 3-col）在同一 PATCH = 200 OK，各含完整 inline children。Orchestrator 可合併 batch
