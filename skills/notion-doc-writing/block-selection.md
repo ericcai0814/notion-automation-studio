@@ -50,7 +50,8 @@
 | **divider** | 強烈分段、頁面大區隔 | 每小段都分 | 代替 heading |
 | **table** | 結構化對照、schema 說明 | cells 需要 heading/list/image（不支援） | 跑出 100+ 列（考慮改用 DB） |
 | **mermaid** | 流程圖、序列圖、架構圖 | 純視覺設計圖 | 節點文字沒雙引號包含 `()` |
-| **columns** | 並排顯示、左右對照 | 手機閱讀為主（columns 在窄螢幕會擠） | 超過 3 欄 |
+| **image** | diagram、screenshot、設計稿 | table cell 內、callout inline | 忘記寫 alt/caption |
+| **columns** | 並排顯示、左右對照（見 Columns 用法要點） | 手機閱讀為主（columns 在窄螢幕會擠） | 超過 4 欄 |
 | **table_of_contents** | 長頁面目錄 | 短頁面 | 每頁都放 |
 
 ## Toggle 用法要點
@@ -74,6 +75,13 @@
 - 首列當標題開 `header-row="true"`
 - 色彩優先順序：cell > row > column（衝突時 cell 贏）
 
+## Image 用法要點
+
+- Image 必須為**獨立 top-level block**，不得放入 table cell（table cell 只支援 rich text）
+- Markdown alt text 映射為 Notion image block 的 **caption**，因此 alt 必須寫人類可讀描述，不要用檔名
+- Publish 使用 `file_upload` 模式時，同一圖片重複出現視為兩次獨立 block，不共用 `file_upload_id`（實務上應避免重複引用同一圖）
+- 圖片路徑相對於 markdown 檔案所在目錄（例如 `../assets/R0044/xxx.png`）
+
 ## Mermaid 用法要點
 
 - 語言設 `mermaid`
@@ -83,9 +91,38 @@
 
 ## Columns 用法要點
 
-- 適合左右對照（優缺點、before/after、spec vs impl）
+**語法**（source markdown）：
+
+```markdown
+<columns>
+<column width_ratio="0.5">
+**標題 A**
+
+![A 圖片](../assets/R0044/a.png)
+</column>
+<column width_ratio="0.5">
+**標題 B**
+
+![B 圖片](../assets/R0044/b.png)
+</column>
+</columns>
+```
+
+- `<columns>` / `<column>` 為 HTML-like tag，大小寫不敏感
+- `width_ratio` 為可選 attribute，同一 `<columns>` 內所有 column 的 ratio 總和須為 1；全部省略則 Notion 預設等分
+
+**內容規則**：
+
+- 每個 `<column>` 可放 paragraph、heading、image、bulleted/numbered list
+- 不建議在 column 內放 table（cell 寬度受限，閱讀體驗差）
+- 適合左右對照（優缺點、before/after、spec vs impl、圖片並排比較）
+
+**限制**：
+
+- 最多 4 欄（Notion 超過會擠）；2 欄常用，3 欄已擁擠
+- 不支援 `<columns>` 巢狀在 `<toggle>` / `<aside>` 內（v1 限制，converter 會報錯）
+- 不支援 `<column>` 內再巢狀 `<columns>`
 - 手機/窄螢幕會被迫堆疊，重要資訊不要只靠 column 排版
-- 2 欄是常用，3 欄已經擁擠，4 欄幾乎不可讀
 
 ## 決策優先順序
 
