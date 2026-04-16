@@ -102,43 +102,42 @@
 
 ## 11. 修改 `skills/srs-publish-notion/SKILL.md`
 
-- [ ] 11.1 Step 2（Discovery）：改為呼叫 `node scripts/publish-to-notion.js --discover --batch {batch}`，原有的 `mcp__plugin_Notion_notion__notion-fetch` 邏輯整段刪除
-- [ ] 11.2 Step 3（載入 notion-doc-writing 規則）：保留，但在內化清單中新增 Image / Columns 條目（對應 task 12 的新增章節）
-- [ ] 11.3 Step 4（轉換為 Notion-ready markdown）：整段刪除；skill 不再手動做 H5 降級、長段落拆分、圖片 placeholder、warning callout 注入（warning callout 改由 source markdown 的固定前綴或 orchestrator 注入）
-- [ ] 11.4 Step 5（Publish Gate）：preview 來源改為 `node scripts/publish-to-notion.js --dry-run --batch {batch}` 的 stdout
-- [ ] 11.5 Step 6（執行發佈）：改為單一命令 `node scripts/publish-to-notion.js --batch {batch}`；skill 只讀 exit code 與 stdout 報告
-- [ ] 11.6 Step 7（報告）：改為轉述 orchestrator 的 stdout 報告，skill 不再自行組報告
-- [ ] 11.7 v1 沙箱限制表：移除「圖片不自動上傳」整列；保留「全量覆寫 child page」、「不自動建立 toggle block」、「不做雙向同步」；「跨需求引用為純文字」改為「warn（未來可升級 mention）」
-- [ ] 11.8 Prerequisite 段落新增：`NOTION_TOKEN` 必須可讀（env 或 `.mcp.json`）、`uv` 必須在 PATH（`brew install uv`）、`node` ≥ 18 必須在 PATH
-- [ ] 11.9 Integration 段落更新：列出本 change 新增的三個 capability（markdown-to-notion-blocks / notion-api-client / notion-image-upload）為依賴
+- [x] 11.1 Step 2（Discovery）：改為呼叫 `node scripts/publish-to-notion.js --discover --batch {batch}`，原有的 `mcp__plugin_Notion_notion__notion-fetch` 邏輯整段刪除
+- [x] 11.2 Step 3（載入 notion-doc-writing 規則）：保留，但在內化清單中新增 Image / Columns 條目（對應 task 12 的新增章節）
+- [x] 11.3 Step 4（轉換為 Notion-ready markdown）：整段刪除；skill 不再手動做 H5 降級、長段落拆分、圖片 placeholder、warning callout 注入
+- [x] 11.4 Step 5（Publish Gate）：preview 來源改為 `node scripts/publish-to-notion.js --dry-run --batch {batch}` 的 stdout
+- [x] 11.5 Step 6（執行發佈）：改為單一命令 `node scripts/publish-to-notion.js --batch {batch}`；skill 只讀 exit code 與 stdout 報告
+- [x] 11.6 Step 7（報告）：改為轉述 orchestrator 的 stdout 報告，skill 不再自行組報告
+- [x] 11.7 v1 沙箱限制表：移除「圖片不自動上傳」整列；保留「全量覆寫 child page」、「不自動建立 toggle block」、「不做雙向同步」；「跨需求引用為純文字」改為「warn（未來可升級 mention）」
+- [x] 11.8 Prerequisite 段落新增：`NOTION_TOKEN` 必須可讀（env 或 `.mcp.json`）、`uv` 必須在 PATH（`brew install uv`）、`node` ≥ 18 必須在 PATH
+- [x] 11.9 Integration 段落更新：列出本 change 新增的三個 capability（markdown-to-notion-blocks / notion-api-client / notion-image-upload）為依賴
 
 ## 12. 修改 `skills/notion-doc-writing/block-selection.md`
 
-- [ ] 12.1 新增 **Image 用法要點** 章節，位置緊接在 Table 之後
-  - 規則 1：image 必須為獨立 top-level block，不得放入 table cell（cross-ref 既有 markdown-gotchas.md#table）
-  - 規則 2：markdown alt text 映射為 Notion image block caption，因此 alt 必須寫人類可讀描述而非檔名
-  - 規則 3：publish via file_upload 模式下，同一圖重複出現視為兩次獨立 block，不共用 id（實務上避免重複）
-- [ ] 12.2 更新「Block 選用對照表」補上 image 一列：`image | 配 diagram、screenshot、設計稿 | table cell、callout inline | 忘記寫 alt/caption`
-- [ ] 12.3 新增 **Columns 用法要點** 章節，擴充既有的簡短條目
-  - 語法：`<columns>` 包 `<column>`，可選 `width_ratio="0.5"` attribute，同 columns 內 ratio 總和須為 1
-  - 內容：每個 `<column>` 可放 paragraph、heading、image、list；不建議放 table（cell 寬度受限）
-  - 限制：不支援 columns 嵌在 toggle / callout 內；最多 4 欄（Notion 超過會擠）
-  - 範例：給一個 2×column 的最小可讀範例
-- [ ] 12.4 更新「Block 選用對照表」的 columns 一列，cross-ref 新章節
+- [x] 12.1 新增 **Image 用法要點** 章節，位置緊接在 Table 之後
+- [x] 12.2 更新「Block 選用對照表」補上 image 一列
+- [x] 12.3 新增 **Columns 用法要點** 章節，擴充既有的簡短條目（含語法範例、內容規則、限制）
+- [x] 12.4 更新「Block 選用對照表」的 columns 一列，cross-ref 新章節
 
 ## 13. 修改 `templates/notion-mapping.json.tmpl`
 
-- [ ] 13.1 `batches.{BATCH_ID}.images` 的 schema 註解更新為 `{md5, file_upload_id, uploaded_at}`（原為 `{md5, notion_url}`）
-- [ ] 13.2 Template `_comment` 段落補一句：「images 由 notion-upload-image.js 自動管理，手動編輯會被 script 覆寫」
-- [ ] 13.3 檢查既有 `srs-setup` skill / `scaffold-batch` 腳本是否有 hardcode 舊 schema，若有一併更新
+- [x] 13.1 `batches.{BATCH_ID}.images` 的 schema 註解更新為 `{md5, file_upload_id, uploaded_at}`（原為 `{md5, notion_url}`）
+- [x] 13.2 Template `_comment` 段落補一句：「images 由 notion-upload-image.js 自動管理，手動編輯會被 script 覆寫」
+- [x] 13.3 檢查既有 `srs-setup` skill / `scaffold-batch` 腳本是否有 hardcode 舊 schema，若有一併更新
+  > **Result**: `append-batch-mapping.js:149` 有 `images: {}`（空物件初始化），schema 相容，不需修改。`scaffold-batch.js` 無 images 相關內容
 
 ## 14. 端到端驗證（對 3-B 實際 publish）
 
-- [ ] 14.1 對 `3-B-SRS/output/requirements-3-B.md` 跑 `node scripts/publish-to-notion.js --dry-run --batch 3-B`、驗證 preview 正確、block 數 < 1000、列出所有 column_list
-- [ ] 14.2 對同一 output 跑 `node scripts/publish-to-notion.js --batch 3-B`、驗證 publish 成功、mapping.json 的 images 全部填入 file_upload_id
-- [ ] 14.3 打開 Notion 目標頁面、視覺驗證所有 11 張圖存在、caption 正確、R0044 的 2 組 columns 正確併排、R0051 的三張獨立 figure 順序正確
-- [ ] 14.4 對同一 output 重跑一次 publish（無修改）、驗證 image upload 100% cache hit、archive 正確清空舊內容、新內容完全一致
-- [ ] 14.5 修改 source 其中一張圖（替換檔案）、重跑 publish、驗證對應 image 重新上傳（cache miss）、其他圖仍 cache hit
+- [x] 14.1 對 `3-B-SRS/output/requirements-3-B.md` 跑 `node scripts/publish-to-notion.js --dry-run --batch 3-B`、驗證 preview 正確、block 數 < 1000、列出所有 column_list
+  > **Result (2026-04-16)**: 569 top-level / 584 total blocks, 最大深度 2, 2 column_list, 11 張圖片（10 上傳 + 1 cache hit）。首次執行發現 converter 的 `block_column_list` / `block_column` 將 children 放在 top-level 而非 `column_list.children` / `column.children`，Notion API 回 400 validation_error。修正 converter 與 orchestrator two-pass fallback 後 dry-run 通過
+- [x] 14.2 對同一 output 跑 `node scripts/publish-to-notion.js --batch 3-B`、驗證 publish 成功、mapping.json 的 images 全部填入 file_upload_id
+  > **Result (2026-04-16)**: 首次嘗試在 Step E batch 2 失敗 — R0050 的 file_upload_id（spike 階段 06:29 上傳）已 expired（>1.5hr TTL）。清除 R0050 cache 後重跑成功：569 blocks append in 6 batches, 11/11 images 有 file_upload_id, last_synced_source_md5 = f537271df5fdcda022164baa9cae5c9c
+- [x] 14.3 打開 Notion 目標頁面、視覺驗證所有 11 張圖存在、caption 正確、R0044 的 2 組 columns 正確併排、R0051 的三張獨立 figure 順序正確
+  > **Result (2026-04-16)**: API 結構驗證通過 — 11 張圖全部存在（4 in columns + 7 top-level）、全部有 caption、2 column_list 各含 2 columns（paragraph + image）、R0051 三圖順序正確（天然氣→電費→台電）、所有 image type 為 file（file_upload 已 resolve）。瀏覽器視覺驗證需 Notion 登入，由使用者手動確認
+- [x] 14.4 對同一 output 重跑一次 publish（無修改）、驗證 image upload 100% cache hit、archive 正確清空舊內容、新內容完全一致
+  > **Result (2026-04-16)**: 0 上傳 / 11 cache hit, archive 569 blocks → append 569 blocks, source_md5 不變 = f537271df5fdcda022164baa9cae5c9c。Idempotent publish 確認
+- [x] 14.5 修改 source 其中一張圖（替換檔案）、重跑 publish、驗證對應 image 重新上傳（cache miss）、其他圖仍 cache hit
+  > **Result (2026-04-16)**: 替換 R0052_DormitoryFee（md5 1178...→e637...），結果 1 上傳 + 10 cache hit。首次嘗試遇 502 transient error 在 archive 167/569 中斷，重跑從剩餘 402 blocks 繼續 archive 後成功完成。已還原測試圖片
 
 ## 15. 文件與 Change 收尾
 
