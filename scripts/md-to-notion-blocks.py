@@ -21,7 +21,7 @@ Block JSON 陣列。供 scripts/publish-to-notion.js orchestrator 呼叫。
 - divider
 - table / table_row（含 has_column_header）
 - bookmark
-- image（external URL）
+- image（external URL / file_upload via --images-manifest）
 - embed
 - equation（block-level $$...$$）
 - table_of_contents
@@ -44,6 +44,7 @@ bold / italic / strikethrough / code / underline / link / inline equation
 import sys
 import json
 import re
+import os
 import argparse
 from pathlib import Path
 
@@ -364,8 +365,53 @@ def block_bookmark(url, caption=None):
     return obj
 
 
-def block_image(url, caption=None):
-    """image（external）"""
+def _resolve_image_manifest(url, images_map, md_dir):
+    """
+    嘗試在 images_map 中查找 url 對應的 file_upload entry。
+    匹配策略：
+    1. 直接 key match（url 原值）
+    2. 正規化路徑 match（os.path.normpath(os.path.join(md_dir, url))）
+    3. 後綴 match（normalized path 以 manifest key 結尾）
+    回傳 manifest entry dict 或 None。
+    """
+    if url in images_map:
+        return images_map[url]
+
+    if md_dir:
+        normalized = os.path.normpath(os.path.join(md_dir, url))
+        if normalized in images_map:
+            return images_map[normalized]
+        for key, value in images_map.items():
+            norm_key = os.path.normpath(key)
+            if normalized.endswith(os.sep + norm_key) or normalized == norm_key:
+                return value
+
+    return None
+
+
+def block_image(url, caption=None, images_map=None, md_dir=None):
+    """image（external 或 file_upload）"""
+    if images_map is not None:
+        entry = _resolve_image_manifest(url, images_map, md_dir)
+        if entry:
+            obj = {
+                "object": "block",
+                "type": "image",
+                "image": {
+                    "type": "file_upload",
+                    "file_upload": {
+                        "id": entry["file_upload_id"]
+                    }
+                }
+            }
+            if caption:
+                obj["image"]["caption"] = caption
+            return obj
+        print(
+            f"image {url} not in manifest, fallback to external",
+            file=sys.stderr,
+        )
+
     obj = {
         "object": "block",
         "type": "image",
@@ -592,7 +638,7 @@ def classify_line(line):
 # Main Converter
 # ============================================================
 
-def _parse_columns(lines, i, line_num):
+def _parse_columns(lines, i, line_num, images_map=None, md_dir=None):
     """
     從 <columns> 後開始收集 column blocks 直到 </columns>。
     回傳 (columns_list, next_i)。
@@ -611,7 +657,7 @@ def _parse_columns(lines, i, line_num):
             ratio = lm.get('width_ratio')
             if ratio is not None:
                 ratios.append(ratio)
-            children, i = _parse_column_children(lines, i + 1, line_num)
+            children, i = _parse_column_children(lines, i + 1, line_num, images_map=images_map, md_dir=md_dir)
             columns.append(block_column(children, width_ratio=ratio))
             continue
 
@@ -636,7 +682,7 @@ def _parse_columns(lines, i, line_num):
     return columns, i
 
 
-def _parse_column_children(lines, i, columns_line_num):
+def _parse_column_children(lines, i, columns_line_num, images_map=None, md_dir=None):
     """
     從 <column> 後開始收集 sub-blocks 直到 </column>。
     回傳 (children, next_i)。
@@ -667,7 +713,7 @@ def _parse_column_children(lines, i, columns_line_num):
         elif lt == 'image':
             alt = lm.get('alt', '')
             caption = parse_rich_text(alt) if alt else None
-            children.append(block_image(lc, caption=caption))
+            children.append(block_image(lc, caption=caption, images_map=images_map, md_dir=md_dir))
             i += 1
         elif lt == 'paragraph':
             children.append(block_paragraph(parse_rich_text(lc)))
@@ -686,9 +732,11 @@ def _parse_column_children(lines, i, columns_line_num):
     return children, i
 
 
-def convert_markdown_to_blocks(text):
+def convert_markdown_to_blocks(text, images_map=None, md_dir=None):
     """
     將 Markdown 文字轉換為 Notion Block 陣列。
+    images_map: 圖片 manifest dict（key → {file_upload_id}），None 表示 external URL 模式。
+    md_dir: markdown 檔案所在目錄的絕對路徑，用於 image path normalization。
     """
     lines = text.split('\n')
     blocks = []
@@ -891,7 +939,7 @@ def convert_markdown_to_blocks(text):
 
         # ---- Columns (<columns>...<column>...</column>...</columns>) ----
         if line_type == 'columns_start':
-            columns, i = _parse_columns(lines, i + 1, line_num=i + 1)
+            columns, i = _parse_columns(lines, i + 1, line_num=i + 1, images_map=images_map, md_dir=md_dir)
             blocks.append(block_column_list(columns))
             continue
 
@@ -920,7 +968,7 @@ def convert_markdown_to_blocks(text):
                 elif lt == 'image':
                     alt = lm.get('alt', '')
                     caption = parse_rich_text(alt) if alt else None
-                    toggle_children.append(block_image(lc, caption=caption))
+                    toggle_children.append(block_image(lc, caption=caption, images_map=images_map, md_dir=md_dir))
                 elif lt == 'embed':
                     toggle_children.append(block_embed(lc))
                 elif lt.startswith('heading_'):
@@ -938,7 +986,7 @@ def convert_markdown_to_blocks(text):
         if line_type == 'image':
             alt = meta.get('alt', '')
             caption = parse_rich_text(alt) if alt else None
-            blocks.append(block_image(content, caption=caption))
+            blocks.append(block_image(content, caption=caption, images_map=images_map, md_dir=md_dir))
             i += 1
             continue
 
@@ -1046,6 +1094,8 @@ def main():
                         help='格式化 JSON 輸出（預設開啟）')
     parser.add_argument('--compact', action='store_true',
                         help='壓縮 JSON 輸出（關閉格式化）')
+    parser.add_argument('--images-manifest',
+                        help='圖片 manifest JSON 路徑；提供時 image block 改為 file_upload 模式')
 
     args = parser.parse_args()
 
@@ -1057,7 +1107,18 @@ def main():
     with open(input_path, 'r', encoding='utf-8') as f:
         md_content = f.read()
 
-    blocks = convert_markdown_to_blocks(md_content)
+    images_map = None
+    md_dir = None
+    if args.images_manifest:
+        manifest_path = Path(args.images_manifest)
+        if not manifest_path.exists():
+            print(f"錯誤：找不到 manifest 檔案 {args.images_manifest}", file=sys.stderr)
+            sys.exit(1)
+        with open(manifest_path, 'r', encoding='utf-8') as f:
+            images_map = json.load(f)
+        md_dir = str(input_path.resolve().parent)
+
+    blocks = convert_markdown_to_blocks(md_content, images_map=images_map, md_dir=md_dir)
 
     indent = None if args.compact else 2
     json_output = json.dumps(blocks, indent=indent, ensure_ascii=False)
