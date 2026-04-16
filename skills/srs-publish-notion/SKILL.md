@@ -245,7 +245,9 @@ append 與 state update。stdout 輸出 JSON preview，包含：
 - `column_list_count`：column_list 數量
 - `estimated_append_batches`：預估 API append 批次數
 
-**注意**：dry-run 會**真的上傳圖片**（以產出 manifest），但不會修改 Notion 頁面內容。
+**注意**：dry-run 會**真的執行 archive（清空頁面）與上傳圖片**（以產出 manifest），
+僅跳過 append（寫入新內容）與 state update。這代表 dry-run 後頁面會暫時為空，
+直到接續的正式 publish 寫入新內容。
 
 #### 4.2: 顯示 Preview 給使用者
 
@@ -342,4 +344,5 @@ node ${CLAUDE_PLUGIN_ROOT}/scripts/workflow-state.js record-publish \
 | Step A archive 中途失敗 | 權限不足或 API 錯誤 | orchestrator log 顯示斷點位置，檢查 Notion 端權限 |
 | Step B 圖片上傳失敗 | 檔案不存在或 > 20 MB | 單張失敗會 warn 繼續，其他圖片不受影響 |
 | Step E 422 on column_list | Notion API nesting 限制 | orchestrator 自動 fallback two-pass |
+| Step E `file_upload expired` | mapping 中 cached 的 `file_upload_id` 已超過 Notion 未文件化的 TTL（實測 >1hr 會過期） | 刪除 mapping 中該圖的 cache entry（清空為 `{}`），重跑 publish 讓 uploader 重新上傳 |
 | 使用者於 publish gate 取消 | 預期行為 | 不做 Notion 頁面寫入，回報「已取消」 |

@@ -141,10 +141,14 @@
 
 ## 15. 文件與 Change 收尾
 
-- [ ] 15.1 更新 `openspec/changes/add-publish-via-api/proposal.md` 的 Non-Goals / Impact 如果實作過程發現 scope 需調整
-- [ ] 15.2 更新 `skills/srs-publish-notion/SKILL.md` 的「完成檢查」清單比照新流程
-- [ ] 15.3 執行 `openspec` CLI 或等效手動檢查：`openspec validate add-publish-via-api`、確認 four specs 的 delta 描述符合 openspec schema
-- [ ] 15.4 Archive 既有的 `.git/spectra-app/changes/add-publish-structure-validation` 或標記為「superseded by add-publish-via-api」，避免未來混淆；本 change 的 orchestrator 已包含基本的結構安全檢查（block count cap），park spec 的 fatal rules 可由 converter 隱性承擔
+- [x] 15.1 更新 `openspec/changes/add-publish-via-api/proposal.md` 的 Non-Goals / Impact 如果實作過程發現 scope 需調整
+  > **Result (2026-04-16)**: 更新三處 — (1) dry-run 描述從「不呼叫 write API」改為「執行 archive + upload，跳過 append + state update」; (2) column_list 風險改為 children 位置問題（已修正）; (3) file_upload TTL 風險補充 e2e 發現（cached ID 跨 session 會 expire）
+- [x] 15.2 更新 `skills/srs-publish-notion/SKILL.md` 的「完成檢查」清單比照新流程
+  > **Result (2026-04-16)**: 修正 dry-run 描述（會真的 archive + upload），新增常見錯誤表 `file_upload expired` 條目。完成檢查清單與新流程一致，無需調整
+- [x] 15.3 執行 `openspec` CLI 或等效手動檢查：`openspec validate add-publish-via-api`、確認 four specs 的 delta 描述符合 openspec schema
+  > **Result (2026-04-16)**: 手動驗證。srs-publish-notion spec 的 V1 limitations 已更新（移除「圖片不自動上傳」，改為 file_upload 流程描述）。Gap：三個 NEW capability specs（markdown-to-notion-blocks / notion-api-client / notion-image-upload）未建立，srs-publish-notion spec 其餘段落仍引用舊 MCP 路徑 — 全面改寫留給後續 change
+- [x] 15.4 Archive 既有的 `.git/spectra-app/changes/add-publish-structure-validation` 或標記為「superseded by add-publish-via-api」，避免未來混淆；本 change 的 orchestrator 已包含基本的結構安全檢查（block count cap），park spec 的 fatal rules 可由 converter 隱性承擔
+  > **Result (2026-04-16)**: change 不存在（openspec/changes、archive、.git/spectra-app 皆無），已被早期清理或從未建立。無需 archive
 
 ## 16. Traceability Matrix（requirement & decision 覆蓋對照）
 
@@ -154,41 +158,41 @@
 
 ### 16.1 Spec requirement traceability
 
-- [ ] 16.1.1 Trace requirement `Converter CLI contract` → tasks 2.1 / 2.4 / 2.5 / 7.2
-- [ ] 16.1.2 Trace requirement `Block type coverage` → tasks 2.1 / 3.x / 5.x / 7.1
-- [ ] 16.1.3 Trace requirement `Rich text annotations` → tasks 2.1 / 6.1 / 6.4
-- [ ] 16.1.4 Trace requirement `Columns block parsing` → tasks 3.1 / 3.2 / 3.3 / 3.4 / 3.5 / 7.1
-- [ ] 16.1.5 Trace requirement `Image file_upload mode` → tasks 4.1 / 4.2 / 4.3 / 4.4 / 4.5 / 7.3
-- [ ] 16.1.6 Trace requirement `H4+ heading downgrade` → tasks 5.1 / 5.2 / 5.3 / 5.4
-- [ ] 16.1.7 Trace requirement `Long rich text content splitting` → tasks 6.1 / 6.2 / 6.3 / 6.4
-- [ ] 16.1.8 Trace requirement `HTML-like tag containers` → tasks 3.1 / 3.4 / 12.3
-- [ ] 16.1.9 Trace requirement `Client module surface` → tasks 8.1
-- [ ] 16.1.10 Trace requirement `Token discovery` → tasks 8.2 / 11.8
-- [ ] 16.1.11 Trace requirement `Standard headers` → tasks 8.3
-- [ ] 16.1.12 Trace requirement `Rate limit enforcement` → tasks 8.4 / 10.10
-- [ ] 16.1.13 Trace requirement `429 retry with Retry-After` → tasks 8.5
-- [ ] 16.1.14 Trace requirement `Standardized error shape` → tasks 8.6
-- [ ] 16.1.15 Trace requirement `Pagination helpers` → tasks 8.1 / 10.2 / 10.3
-- [ ] 16.1.16 Trace requirement `Uploader CLI contract` → tasks 9.1
-- [ ] 16.1.17 Trace requirement `md5 cache semantics` → tasks 9.2 / 9.3 / 9.4 / 9.7
-- [ ] 16.1.18 Trace requirement `Idempotence` → tasks 9.7 / 14.4
-- [ ] 16.1.19 Trace requirement `Secure mapping rewrite` → tasks 9.5 / 13.2
-- [ ] 16.1.20 Trace requirement `Error propagation` → tasks 9.6
-- [ ] 16.1.21 Trace requirement `Orchestrator integration` → tasks 10.4
-- [ ] 16.1.22 Trace requirement `Publish transport layer` → tasks 10.1 / 10.5 / 11.1 / 11.5
-- [ ] 16.1.23 Trace requirement `V1 sandbox limitations` → tasks 11.7
-- [ ] 16.1.24 Trace requirement `Prerequisites` → tasks 11.8
-- [ ] 16.1.25 Trace requirement `Error reporting contract with orchestrator` → tasks 10.11 / 11.6
-- [ ] 16.1.26 Trace requirement `Migration from MCP path` → tasks 11.1 / 11.9
+- [x] 16.1.1 Trace requirement `Converter CLI contract` → tasks 2.1 / 2.4 / 2.5 / 7.2
+- [x] 16.1.2 Trace requirement `Block type coverage` → tasks 2.1 / 3.x / 5.x / 7.1
+- [x] 16.1.3 Trace requirement `Rich text annotations` → tasks 2.1 / 6.1 / 6.4
+- [x] 16.1.4 Trace requirement `Columns block parsing` → tasks 3.1 / 3.2 / 3.3 / 3.4 / 3.5 / 7.1
+- [x] 16.1.5 Trace requirement `Image file_upload mode` → tasks 4.1 / 4.2 / 4.3 / 4.4 / 4.5 / 7.3
+- [x] 16.1.6 Trace requirement `H4+ heading downgrade` → tasks 5.1 / 5.2 / 5.3 / 5.4
+- [x] 16.1.7 Trace requirement `Long rich text content splitting` → tasks 6.1 / 6.2 / 6.3 / 6.4
+- [x] 16.1.8 Trace requirement `HTML-like tag containers` → tasks 3.1 / 3.4 / 12.3
+- [x] 16.1.9 Trace requirement `Client module surface` → tasks 8.1
+- [x] 16.1.10 Trace requirement `Token discovery` → tasks 8.2 / 11.8
+- [x] 16.1.11 Trace requirement `Standard headers` → tasks 8.3
+- [x] 16.1.12 Trace requirement `Rate limit enforcement` → tasks 8.4 / 10.10
+- [x] 16.1.13 Trace requirement `429 retry with Retry-After` → tasks 8.5
+- [x] 16.1.14 Trace requirement `Standardized error shape` → tasks 8.6
+- [x] 16.1.15 Trace requirement `Pagination helpers` → tasks 8.1 / 10.2 / 10.3
+- [x] 16.1.16 Trace requirement `Uploader CLI contract` → tasks 9.1
+- [x] 16.1.17 Trace requirement `md5 cache semantics` → tasks 9.2 / 9.3 / 9.4 / 9.7
+- [x] 16.1.18 Trace requirement `Idempotence` → tasks 9.7 / 14.4
+- [x] 16.1.19 Trace requirement `Secure mapping rewrite` → tasks 9.5 / 13.2
+- [x] 16.1.20 Trace requirement `Error propagation` → tasks 9.6
+- [x] 16.1.21 Trace requirement `Orchestrator integration` → tasks 10.4
+- [x] 16.1.22 Trace requirement `Publish transport layer` → tasks 10.1 / 10.5 / 11.1 / 11.5
+- [x] 16.1.23 Trace requirement `V1 sandbox limitations` → tasks 11.7
+- [x] 16.1.24 Trace requirement `Prerequisites` → tasks 11.8
+- [x] 16.1.25 Trace requirement `Error reporting contract with orchestrator` → tasks 10.11 / 11.6
+- [x] 16.1.26 Trace requirement `Migration from MCP path` → tasks 11.1 / 11.9
 
 ### 16.2 Design decision traceability
 
-- [ ] 16.2.1 Trace decision 1：reuse `ew-notion-component-docs/convert.py` as converter base → tasks 2.1 / 2.2 / 2.3
-- [ ] 16.2.2 Trace decision 2：language mix — python converter + node orchestrator / client / uploader → tasks 2.x / 8.x / 9.x / 10.x
-- [ ] 16.2.3 Trace decision 3：column source syntax — `<columns>` / `<column>` html-like tag → tasks 3.1 / 3.2 / 3.3 / 3.4 / 3.5
-- [ ] 16.2.4 Trace decision 4：image 雙模式 — external url or file_upload → tasks 4.1 / 4.2 / 4.3 / 4.4 / 4.5
-- [ ] 16.2.5 Trace decision 5：publish flow — archive-then-append, no block diff → tasks 10.3 / 10.7
-- [ ] 16.2.6 Trace decision 6：column nesting — two-pass append → tasks 1.1 / 10.7
-- [ ] 16.2.7 Trace decision 7：rate limit — token bucket with burst 5 → tasks 1.4 / 8.4
-- [ ] 16.2.8 Trace decision 8：python invocation via `uv` → tasks 2.5 / 10.5 / 11.8
-- [ ] 16.2.9 Trace decision 9：notion_token source — read from `.mcp.json` → tasks 8.2 / 11.8
+- [x] 16.2.1 Trace decision 1：reuse `ew-notion-component-docs/convert.py` as converter base → tasks 2.1 / 2.2 / 2.3
+- [x] 16.2.2 Trace decision 2：language mix — python converter + node orchestrator / client / uploader → tasks 2.x / 8.x / 9.x / 10.x
+- [x] 16.2.3 Trace decision 3：column source syntax — `<columns>` / `<column>` html-like tag → tasks 3.1 / 3.2 / 3.3 / 3.4 / 3.5
+- [x] 16.2.4 Trace decision 4：image 雙模式 — external url or file_upload → tasks 4.1 / 4.2 / 4.3 / 4.4 / 4.5
+- [x] 16.2.5 Trace decision 5：publish flow — archive-then-append, no block diff → tasks 10.3 / 10.7
+- [x] 16.2.6 Trace decision 6：column nesting — one-shot default + 422 fallback two-pass → tasks 1.1 / 10.7（spike 證實 one-shot 可行）
+- [x] 16.2.7 Trace decision 7：rate limit — token bucket with burst 5 → tasks 1.4 / 8.4
+- [x] 16.2.8 Trace decision 8：python invocation via `uv` → tasks 2.5 / 10.5 / 11.8
+- [x] 16.2.9 Trace decision 9：notion_token source — read from `.mcp.json` → tasks 8.2 / 11.8
