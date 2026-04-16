@@ -10,7 +10,7 @@ notion-automation-studio — Markdown → Notion Block JSON 轉換器
 Block JSON 陣列。供 scripts/publish-to-notion.js orchestrator 呼叫。
 
 支援 Block 類型：
-- heading_1 / heading_2 / heading_3（含 is_toggleable、color）
+- heading_1 / heading_2 / heading_3 / heading_4（含 is_toggleable、color）
 - paragraph（含 color）
 - bulleted_list_item / numbered_list_item（含巢狀 children）
 - to_do（含 checked）
@@ -190,7 +190,7 @@ def _text_obj(content, bold=False, italic=False, strikethrough=False,
 # ============================================================
 
 def block_heading(level, rich_text, color="default", is_toggleable=False):
-    """heading_1 / heading_2 / heading_3"""
+    """heading_1 / heading_2 / heading_3 / heading_4"""
     key = f"heading_{level}"
     block = {
         "object": "block",
@@ -528,7 +528,7 @@ def classify_line(line):
         return 'divider', '', {}
 
     # Heading
-    heading_match = re.match(r'^(#{1,3})\s+(.+)$', stripped)
+    heading_match = re.match(r'^(#{1,6})\s+(.+)$', stripped)
     if heading_match:
         level = len(heading_match.group(1))
         content = heading_match.group(2)
@@ -708,7 +708,11 @@ def _parse_column_children(lines, i, columns_line_num, images_map=None, md_dir=N
         # 將 column 內的行轉成 sub-blocks
         if lt.startswith('heading_'):
             level = int(lt[-1])
-            children.append(block_heading(level, parse_rich_text(lc)))
+            if level <= 4:
+                children.append(block_heading(level, parse_rich_text(lc)))
+            else:
+                children.append(block_paragraph([_text_obj(lc, bold=True)]))
+                print(f"H{level} downgraded to bold paragraph, consider restructuring source", file=sys.stderr)
             i += 1
         elif lt == 'image':
             alt = lm.get('alt', '')
@@ -787,8 +791,17 @@ def convert_markdown_to_blocks(text, images_map=None, md_dir=None):
                     color = potential_color
                     content = re.sub(r'<!--\s*\w+(?:_\w+)?\s*-->', '', content).strip()
 
-            rich_text = parse_rich_text(content)
-            blocks.append(block_heading(level, rich_text, color=color))
+            if level <= 4:
+                rich_text = parse_rich_text(content)
+                blocks.append(block_heading(level, rich_text, color=color))
+            else:
+                # H5/H6 → paragraph with bold rich_text
+                rich_text = [_text_obj(content, bold=True)]
+                blocks.append(block_paragraph(rich_text, color=color))
+                print(
+                    f"H{level} downgraded to bold paragraph, consider restructuring source",
+                    file=sys.stderr,
+                )
             i += 1
             continue
 
@@ -973,7 +986,11 @@ def convert_markdown_to_blocks(text, images_map=None, md_dir=None):
                     toggle_children.append(block_embed(lc))
                 elif lt.startswith('heading_'):
                     hlevel = int(lt[-1])
-                    toggle_children.append(block_heading(hlevel, parse_rich_text(lc)))
+                    if hlevel <= 4:
+                        toggle_children.append(block_heading(hlevel, parse_rich_text(lc)))
+                    else:
+                        toggle_children.append(block_paragraph([_text_obj(lc, bold=True)]))
+                        print(f"H{hlevel} downgraded to bold paragraph, consider restructuring source", file=sys.stderr)
                 else:
                     toggle_children.append(block_paragraph(parse_rich_text(lc)))
                 i += 1
